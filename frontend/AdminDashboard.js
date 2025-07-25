@@ -55,51 +55,36 @@ export default function AdminDashboard() {
     {
       title: 'Total Employees',
       value: stats.totalEmployees,
-      icon: <MaterialIcons name="people" size={28} color="#4f46e5" />,
-      change: '+12%',
-      color: '#4f46e5',
+      icon: <MaterialIcons name="people" size={28} color="#3b82f6" />,
     },
     {
       title: 'Present Today',
       value: stats.presentToday,
-      icon: <MaterialIcons name="check-circle" size={28} color="#10b981" />,
-      change: '+5%',
-      color: '#10b981',
+      icon: <MaterialIcons name="check-circle" size={28} color="#3b82f6" />,
     },
     {
       title: 'Absent Today',
       value: stats.absentToday,
-      icon: <MaterialIcons name="cancel" size={28} color="#ef4444" />,
-      change: '-2%',
-      color: '#ef4444',
+      icon: <MaterialIcons name="cancel" size={28} color="#3b82f6" />,
     },
     {
       title: 'Monthly Payroll',
       value: `$${stats.monthlyPayroll.toLocaleString()}`,
-      icon: <FontAwesome name="money" size={28} color="#f59e0b" />,
-      change: '+8%',
-      color: '#f59e0b',
+      icon: <FontAwesome name="money" size={28} color="#3b82f6" />,
     },
   ];
 
   const quickActions = [
-    { label: 'Add Employee', icon: <MaterialIcons name="person-add" size={24} color="white" />, color: '#3b82f6' },
-    { label: 'Process Payroll', icon: <MaterialCommunityIcons name="cash-multiple" size={24} color="white" />, color: '#10b981' },
-    { label: 'Generate Report', icon: <Feather name="bar-chart-2" size={24} color="white" />, color: '#a855f7' },
-    { label: 'Bulk Upload', icon: <MaterialIcons name="cloud-upload" size={24} color="white" />, color: '#f97316' },
-  ];
-
-  const activities = [
-    { text: 'John Doe checked in at 9:00 AM', time: '2 hours ago' },
-    { text: 'Monthly payroll processed successfully', time: '1 day ago' },
-    { text: 'Sarah Wilson applied for leave', time: '2 days ago' },
-    { text: '5 employees pending attendance approval', time: '3 days ago' },
+    { label: 'Add Employee', icon: <MaterialIcons name="person-add" size={24} color="#ffffff" /> },
+    { label: 'Mark Attendance', icon: <MaterialCommunityIcons name="cash-multiple" size={24} color="#ffffff" /> },
+    { label: 'Today Attendance', icon: <Feather name="bar-chart-2" size={24} color="#ffffff" /> },
+    { label: 'Leave Approvals', icon: <MaterialIcons name="cloud-upload" size={24} color="#ffffff" /> },
   ];
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#a78bfa" />
+        <ActivityIndicator size="large" color="#3b82f6" />
         <Text style={styles.loadingText}>Loading dashboard...</Text>
       </View>
     );
@@ -107,41 +92,19 @@ export default function AdminDashboard() {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.headerTitle}>Welcome back, System Administrator!</Text>
+      <Text style={styles.headerTitle}>Welcome back, System Administrator</Text>
       <Text style={styles.headerSub}>Updated: {new Date().toLocaleTimeString()}</Text>
 
       {/* Stat Cards */}
       <View style={styles.cardGrid}>
         {statCards.map((item, idx) => (
-          <View key={idx} style={[styles.statCard, { borderLeftColor: item.color }]}>
+          <View key={idx} style={styles.statCard}>
             {item.icon}
             <Text style={styles.statTitle}>{item.title}</Text>
             <Text style={styles.statValue}>{item.value}</Text>
-            <Text style={[styles.statChange, {
-              color: item.change.startsWith('+') ? '#22c55e' : '#ef4444',
-            }]}>
-              {item.change}
-            </Text>
+            <Text style={styles.statChange}>{item.change}</Text>
           </View>
         ))}
-      </View>
-
-      {/* Recent Activities */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent Activities</Text>
-        <View style={styles.glassBox}>
-          {activities.map((act, i) => (
-            <View key={i} style={styles.activityRow}>
-              <View style={styles.activityDot}>
-                <MaterialIcons name="fiber-manual-record" size={16} color="#a78bfa" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>{act.text}</Text>
-                <Text style={styles.activityTime}>{act.time}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
       </View>
 
       {/* Quick Actions */}
@@ -151,7 +114,7 @@ export default function AdminDashboard() {
           {quickActions.map((action, i) => (
             <TouchableOpacity
               key={i}
-              style={[styles.actionButton, { backgroundColor: action.color }]}
+              style={styles.actionButton}
             >
               {action.icon}
               <Text style={styles.actionLabel}>{action.label}</Text>
@@ -166,17 +129,17 @@ export default function AdminDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e1b4b',
+    backgroundColor: '#f9fafb', // light gray background
     padding: 20,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#254979ff', // very dark gray text
     marginBottom: 4,
   },
   headerSub: {
-    color: '#a78bfa',
+    color: '#254979ff', // blue accent
     marginBottom: 20,
   },
   cardGrid: {
@@ -185,60 +148,43 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   statCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: '#ffffff', // white card
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     width: screenWidth / 2 - 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
     borderLeftWidth: 4,
+    borderLeftColor: '#3b82f6',
   },
   statTitle: {
-    color: '#d1d5db',
+    color: '#254979ff', // gray text
     fontSize: 14,
     marginTop: 8,
   },
   statValue: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#254979ff',
     marginTop: 4,
   },
   statChange: {
     fontSize: 14,
     marginTop: 4,
+    color: '#3b82f6',
   },
   section: {
     marginTop: 24,
   },
   sectionTitle: {
-    fontSize: 20,
-    color: '#ffffff',
+    fontSize: 18,
+    color: '#254979ff',
     marginBottom: 10,
     fontWeight: 'bold',
-  },
-  glassBox: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 14,
-    padding: 14,
-  },
-  activityRow: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
-  activityDot: {
-    marginRight: 8,
-    justifyContent: 'center',
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityText: {
-    color: '#ffffff',
-    fontSize: 14,
-  },
-  activityTime: {
-    color: '#a78bfa',
-    fontSize: 12,
   },
   actionsGrid: {
     flexDirection: 'row',
@@ -251,6 +197,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 14,
     alignItems: 'center',
+    backgroundColor: '#4e8ff7ff',
   },
   actionLabel: {
     fontSize: 14,
@@ -262,10 +209,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1e1b4b',
+    backgroundColor: '#f9fafb',
   },
   loadingText: {
-    color: '#d8b4fe',
+    color: '#3b82f6',
     marginTop: 10,
     fontSize: 16,
   },

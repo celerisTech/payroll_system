@@ -13,7 +13,7 @@ import DatePicker from 'react-datepicker'; // ✅ Web only
 import 'react-datepicker/dist/react-datepicker.css'; // ✅ Required for web
 import { Backend_Url } from './Backend_url';
 import { format } from 'date-fns';
-import { useIsFocused } from '@react-navigation/native'; // ✅ Focus hook
+import { useIsFocused } from '@react-navigation/native';
 
 export default function AdminAttendanceScreen() {
   const [date, setDate] = useState(new Date());
@@ -21,21 +21,20 @@ export default function AdminAttendanceScreen() {
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const isFocused = useIsFocused(); // ✅ Track focus
+  const isFocused = useIsFocused();
   const formattedDate = format(date, 'yyyy-MM-dd');
 
   useEffect(() => {
     if (isFocused) {
       fetchAttendance(formattedDate);
     }
-  }, [isFocused, date]); // ✅ Fetch on focus or date change
+  }, [isFocused, date]);
 
   const fetchAttendance = async (date) => {
     setLoading(true);
     try {
       const res = await fetch(`${Backend_Url}/api/attendance?date=${date}`);
       const data = await res.json();
-
       if (res.ok && Array.isArray(data)) {
         setAttendance(data);
       } else {
@@ -52,7 +51,7 @@ export default function AdminAttendanceScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header Section */}
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Attendance Management</Text>
         <Text style={styles.headerSubtitle}>Select date and view employee attendance</Text>
@@ -60,7 +59,7 @@ export default function AdminAttendanceScreen() {
 
       {/* Date Picker */}
       {Platform.OS === 'web' ? (
-        <View style={{ marginBottom: 20, backgroundColor: 'white', padding: 10, borderRadius: 10 }}>
+        <View style={styles.webDatePicker}>
           <DatePicker
             selected={date}
             onChange={(selectedDate) => selectedDate && setDate(selectedDate)}
@@ -78,7 +77,7 @@ export default function AdminAttendanceScreen() {
             style={styles.datePicker}
             activeOpacity={0.8}
           >
-            <Text style={styles.datePickerText}>📅  Select Date:</Text>
+            <Text style={styles.datePickerText}>📅 Select Date:</Text>
             <Text style={styles.datePickerDate}>{format(date, 'dd-MM-yyyy')}</Text>
           </TouchableOpacity>
 
@@ -100,7 +99,7 @@ export default function AdminAttendanceScreen() {
       {/* Attendance List */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator color="#fff" size="large" />
+          <ActivityIndicator color="#4e8ff7" size="large" />
         </View>
       ) : attendance.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -131,45 +130,44 @@ export default function AdminAttendanceScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1a0a47',
-    padding: 20,
-  },
-  header: {
-    marginBottom: 24,
-  },
+  container: { flex: 1, backgroundColor: '#ffffff', padding: 20 },
+  header: { marginBottom: 24 },
   headerTitle: {
-    color: '#ffffff',
+    color: '#254979ff',
     fontSize: 26,
     fontWeight: 'bold',
     marginBottom: 4,
+    textAlign: 'center',
   },
   headerSubtitle: {
-    color: '#a78bfa',
+    color: '#254979ff',
     fontSize: 15,
+    textAlign: 'center',
+  },
+  webDatePicker: {
+    marginBottom: 20,
+    backgroundColor: '#f9fafb',
+    padding: 10,
+    borderRadius: 10,
   },
   datePicker: {
-    backgroundColor: '#2e1065',
+    backgroundColor: '#f9fafb',
+    borderColor: '#d1d5db',
+    borderWidth: 1,
     padding: 16,
     borderRadius: 12,
     marginBottom: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
   },
   datePickerText: {
-    color: '#e9d5ff',
+    color: '#4e8ff7',
     fontWeight: '600',
     fontSize: 16,
   },
   datePickerDate: {
-    color: '#ffffff',
+    color: '#111827',
     fontSize: 18,
     fontWeight: '500',
   },
@@ -184,31 +182,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    color: '#c4b5fd',
+    color: '#6b7280',
     fontSize: 16,
   },
   attendanceCard: {
-    backgroundColor: '#2e1065',
+    backgroundColor: '#f9fafb',
     padding: 18,
     borderRadius: 12,
     marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
   },
-  employeeInfo: {
-    marginBottom: 12,
-  },
+  employeeInfo: { marginBottom: 12 },
   employeeName: {
-    color: '#ffffff',
+    color: '#254979ff',
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 2,
   },
   employeeId: {
-    color: '#a78bfa',
+    color: '#254979ff',
     fontSize: 14,
   },
   statusContainer: {
@@ -217,20 +210,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statusLabel: {
-    color: '#d8b4fe',
+    color: '#254979ff',
     fontSize: 15,
   },
   statusValue: {
     fontSize: 16,
     fontWeight: 'bold',
   },
-  statusPresent: {
-    color: '#4ade80',
-  },
-  statusAbsent: {
-    color: '#f87171',
-  },
-  statusOther: {
-    color: '#facc15',
-  },
+  statusPresent: { color: '#10b981' }, // ✅ Green
+  statusAbsent: { color: '#ef4444' },  // ✅ Red
+  statusOther: { color: '#f59e0b' },   // ✅ Yellow
 });

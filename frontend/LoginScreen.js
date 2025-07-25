@@ -40,14 +40,14 @@ export default function LoginScreen({ onLogin }) {
 
         <TextInput
           placeholder="Username"
-          placeholderTextColor="#a5b4fc"
+          placeholderTextColor="#254979"
           value={username}
           onChangeText={setUsername}
           style={styles.input}
         />
         <TextInput
           placeholder="Password"
-          placeholderTextColor="#a5b4fc"
+          placeholderTextColor="#254979"
           value={password}
           onChangeText={setPassword}
           style={styles.input}
@@ -67,40 +67,36 @@ export default function LoginScreen({ onLogin }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e1b4b',
+    backgroundColor: '#ffffff', // white background
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   loginBox: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(37,73,121,0.06)', // subtle translucent card using button color with opacity
     borderRadius: 16,
     padding: 24,
     width: '100%',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 6,
   },
   title: {
     fontSize: 26,
-    color: '#ffffff',
+    color: '#254979',
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 20,
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    color: '#ffffff',
+    backgroundColor: 'rgba(37,73,121,0.08)', // input box background with opacity
+    color: '#254979',
     padding: 14,
     borderRadius: 10,
     marginBottom: 16,
-    borderColor: '#4f46e5',
+    borderColor: '#254979', // input border same as button color
     borderWidth: 1,
   },
   button: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#4e8ff7', // dark blue button
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
@@ -112,23 +108,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   message: {
-    color: '#a78bfa',
+    color: '#254979',
     textAlign: 'center',
     marginTop: 12,
     fontSize: 14,
   },
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-

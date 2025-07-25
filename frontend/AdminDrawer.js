@@ -9,10 +9,14 @@ import AdminActiveEmployees from './AdminActiveEmployees';
 import AdminInactiveEmployees from './AdminInactiveEmployees';
 import AdminAttendanceScreen from './AdminAttendanceScreen';
 import MarkAttendanceScreen from './MarkAttendanceScreen';
-import LogoutScreen from './LogoutScreen'; // ✅ new
+import LogoutScreen from './LogoutScreen';
 import DepartmentsScreen from './DepartmentsScreen';
 import DesignationsScreen from './DesignationsScreen';
-
+import AdminGenerateSalaryScreen from './AdminGenerateSalaryScreen';
+import AdminDefineSalaryStructureScreen from './AdminDefineSalaryStructureScreen';
+import AdminViewSalaryHistoryScreen from './AdminViewSalaryHistoryScreen';
+import LeaveDashboard from './LeaveDashboard';
+import ManagerApproval from './ManagerApproval';
 const Drawer = createDrawerNavigator();
 
 export default function AdminDrawer({ onLogout }) {
@@ -21,7 +25,7 @@ export default function AdminDrawer({ onLogout }) {
       <Drawer.Navigator
         initialRouteName="Dashboard"
         screenOptions={{
-          headerStyle: { backgroundColor: '#4B0082' },
+          headerStyle: { backgroundColor: '#254979ff' },
           headerTintColor: '#fff',
           drawerStyle: { backgroundColor: '#f5f5f5' },
           drawerActiveTintColor: '#4B0082',
@@ -37,14 +41,21 @@ export default function AdminDrawer({ onLogout }) {
         <Drawer.Screen name="Active Employees" component={AdminActiveEmployees} />
         <Drawer.Screen name="Inactive Employees" component={AdminInactiveEmployees} />
         <Drawer.Screen name="Departments" component={DepartmentsScreen} />
-<Drawer.Screen name="Designations" component={DesignationsScreen} />
+        <Drawer.Screen name="Designations" component={DesignationsScreen} />
+        <Drawer.Screen name="Leave Approval" component={ManagerApproval} />
+        <Drawer.Screen name="Leave apply" component={LeaveDashboard} />
+
+        {/* 💰 Salary Management */}
+        <Drawer.Screen name="Generate Salary" component={AdminGenerateSalaryScreen} />
+        <Drawer.Screen name="Define Salary Structure" component={AdminDefineSalaryStructureScreen} />
+        <Drawer.Screen name="View Salary" component={AdminViewSalaryHistoryScreen} />
 
 
         {/* 🕒 Attendance Management */}
         <Drawer.Screen name="Attendance" component={AdminAttendanceScreen} />
         <Drawer.Screen name="Mark Attendance" component={MarkAttendanceScreen} />
-
-        {/* 🔓 Logout (using dedicated screen) */}
+        
+        {/* 🔓 Logout */}
         <Drawer.Screen
           name="Logout"
           component={LogoutScreen}
