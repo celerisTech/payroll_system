@@ -109,8 +109,8 @@ export default function AdminAttendanceScreen() {
         attendance.map((emp, idx) => (
           <View key={idx} style={styles.attendanceCard}>
             <View style={styles.employeeInfo}>
-              <Text style={styles.employeeName}>Name: {emp.name}</Text>
-              <Text style={styles.employeeId}>User ID: {emp.user_id}</Text>
+              <Text style={styles.employeeName}>Name: {emp.PR_EMP_Full_Name}</Text>
+              <Text style={styles.employeeId}>User ID: {emp.PR_Emp_id}</Text>
             </View>
             <View style={styles.statusContainer}>
               <Text style={styles.statusLabel}>Status:</Text>
@@ -144,6 +144,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
   },
+  
   webDatePicker: {
     marginBottom: 20,
     backgroundColor: '#f9fafb',

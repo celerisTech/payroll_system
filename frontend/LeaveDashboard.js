@@ -80,7 +80,7 @@ console.log('🟢 applyLeave() triggered');
     }
 
     axios.post(`${Backend_Url}/api/leaves/apply`, {
-      user_id: empId,
+      PR_Emp_id: empId,
       leave_type: leaveType,
       from_date: fromDateTime.toISOString().split('T')[0],
       from_time: fromHour + ':' + fromMinute + ' ' + fromAmPm,
@@ -161,7 +161,7 @@ console.log('🟢 applyLeave() triggered');
           <Text style={styles.modalTitle}>Leave Details</Text>
           {leaveData ? (
             <>
-              <Text style={styles.inline}>User ID: {leaveData.user_id}</Text>
+              <Text style={styles.inline}>User ID: {leaveData.PR_Emp_id}</Text>
               <Text style={styles.inline}>Year: {leaveData.year}</Text>
               <Text style={styles.subHeading}>Available Leave Balance</Text>
               <Text style={styles.inline}>CL Remaining: {leaveData.pr_cl_balance}</Text>

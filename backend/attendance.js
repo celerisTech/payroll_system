@@ -14,13 +14,13 @@ router.get('/', async (req, res) => {
     const [rows] = await db.query(
       `
       SELECT 
-        e.user_id,
-        e.name,
+        e.PR_Emp_id,
+        e.PR_EMP_Full_Name,
         a.status
-      FROM employees e
+      FROM PR_Employees_Master e
       LEFT JOIN employee_attendance a 
-        ON e.user_id = a.user_id AND a.date = ?
-      WHERE e.is_active = 1
+        ON e.PR_Emp_id = a.PR_Emp_id AND a.date = ?
+      WHERE e.PR_EMP_Is_Active = 1
       `,
       [date]
     );

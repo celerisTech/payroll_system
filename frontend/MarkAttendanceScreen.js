@@ -55,10 +55,10 @@ export default function MarkAttendanceScreen() {
     }
   };
 
-  const toggleStatus = (user_id) => {
+  const toggleStatus = (PR_Emp_id) => {
     setEmployees(prev =>
       prev.map(emp =>
-        emp.user_id === user_id
+        emp.PR_Emp_id === PR_Emp_id
           ? { ...emp, status: emp.status === 'Present' ? 'Absent' : 'Present' }
           : emp
       )
@@ -71,7 +71,7 @@ export default function MarkAttendanceScreen() {
       const payload = {
         date: formattedDate,
         attendance: employees.map(e => ({
-          user_id: e.user_id,
+          PR_Emp_id: e.PR_Emp_id,
           status: e.status,
         })),
       };
@@ -144,15 +144,15 @@ export default function MarkAttendanceScreen() {
           ) : (
             employees.map(emp => (
               <TouchableOpacity
-                key={emp.user_id}
-                onPress={() => toggleStatus(emp.user_id)}
+                key={emp.PR_Emp_id}
+                onPress={() => toggleStatus(emp.PR_Emp_id)}
                 style={[
                   styles.employeeCard,
                   emp.status === 'Present' ? styles.statusPresent : styles.statusAbsent
                 ]}
                 activeOpacity={0.7}
               >
-                <Text style={styles.employeeName}>{emp.name} ({emp.user_id})</Text>
+                <Text style={styles.employeeName}>{emp.PR_EMP_Full_Name} ({emp.PR_Emp_id})</Text>
                 <View style={styles.statusContainer}>
                   <Text style={styles.statusText}>Status: {emp.status}</Text>
                   <Text style={styles.toggleHint}>Tap to toggle</Text>

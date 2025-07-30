@@ -1,4 +1,3 @@
-// AdminDashboard.js
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
@@ -6,10 +5,13 @@ import {
 } from 'react-native';
 import { MaterialIcons, FontAwesome, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { Backend_Url } from './Backend_url';
+import { useNavigation } from '@react-navigation/native';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function AdminDashboard() {
+  const navigation = useNavigation();
+
   const [stats, setStats] = useState({
     totalEmployees: 0,
     presentToday: 0,
@@ -69,16 +71,32 @@ export default function AdminDashboard() {
     },
     {
       title: 'Monthly Payroll',
-      value: `$${stats.monthlyPayroll.toLocaleString()}`,
+      value: `₹${stats.monthlyPayroll.toLocaleString()}`,
       icon: <FontAwesome name="money" size={28} color="#3b82f6" />,
     },
   ];
 
   const quickActions = [
-    { label: 'Add Employee', icon: <MaterialIcons name="person-add" size={24} color="#ffffff" /> },
-    { label: 'Mark Attendance', icon: <MaterialCommunityIcons name="cash-multiple" size={24} color="#ffffff" /> },
-    { label: 'Today Attendance', icon: <Feather name="bar-chart-2" size={24} color="#ffffff" /> },
-    { label: 'Leave Approvals', icon: <MaterialIcons name="cloud-upload" size={24} color="#ffffff" /> },
+    {
+      label: 'Add Employee',
+      icon: <MaterialIcons name="person-add" size={24} color="#ffffff" />,
+      navigateTo: 'Add Employee',
+    },
+    {
+      label: 'Mark Attendance',
+      icon: <MaterialCommunityIcons name="calendar-check" size={24} color="#ffffff" />,
+      navigateTo: 'Mark Attendance',
+    },
+    {
+      label: 'Today Attendance',
+      icon: <Feather name="bar-chart-2" size={24} color="#ffffff" />,
+      navigateTo: 'Attendance',
+    },
+    {
+      label: 'Leave Approvals',
+      icon: <MaterialIcons name="approval" size={24} color="#ffffff" />,
+      navigateTo: 'Leave Approval',
+    },
   ];
 
   if (loading) {
@@ -93,7 +111,6 @@ export default function AdminDashboard() {
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.headerTitle}>Welcome back, System Administrator</Text>
-      <Text style={styles.headerSub}>Updated: {new Date().toLocaleTimeString()}</Text>
 
       {/* Stat Cards */}
       <View style={styles.cardGrid}>
@@ -102,7 +119,6 @@ export default function AdminDashboard() {
             {item.icon}
             <Text style={styles.statTitle}>{item.title}</Text>
             <Text style={styles.statValue}>{item.value}</Text>
-            <Text style={styles.statChange}>{item.change}</Text>
           </View>
         ))}
       </View>
@@ -115,6 +131,7 @@ export default function AdminDashboard() {
             <TouchableOpacity
               key={i}
               style={styles.actionButton}
+              onPress={() => navigation.navigate(action.navigateTo)}
             >
               {action.icon}
               <Text style={styles.actionLabel}>{action.label}</Text>
@@ -129,17 +146,17 @@ export default function AdminDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb', // light gray background
+    backgroundColor: '#f9fafb',
     padding: 20,
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#254979ff', // very dark gray text
-    marginBottom: 4,
+    color: '#254979ff',
+    marginBottom: 40,
   },
   headerSub: {
-    color: '#254979ff', // blue accent
+    color: '#254979ff',
     marginBottom: 20,
   },
   cardGrid: {
@@ -148,7 +165,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   statCard: {
-    backgroundColor: '#ffffff', // white card
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
@@ -162,7 +179,7 @@ const styles = StyleSheet.create({
     borderLeftColor: '#3b82f6',
   },
   statTitle: {
-    color: '#254979ff', // gray text
+    color: '#254979ff',
     fontSize: 14,
     marginTop: 8,
   },
@@ -171,11 +188,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#254979ff',
     marginTop: 4,
-  },
-  statChange: {
-    fontSize: 14,
-    marginTop: 4,
-    color: '#3b82f6',
   },
   section: {
     marginTop: 24,

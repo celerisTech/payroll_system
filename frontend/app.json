@@ -17,7 +17,11 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["MEDIA_LIBRARY"]
+      "permissions": [
+        "MEDIA_LIBRARY",
+        "MEDIA_LIBRARY"
+      ],
+      "package": "com.anonymous.frontend"
     },
     "web": {
       "bundler": "metro",

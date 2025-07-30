@@ -15,14 +15,14 @@ router.post('/mark', async (req, res) => {
 
     for (const emp of attendance) {
       const [result] = await conn.query(
-        'UPDATE employee_attendance SET status = ? WHERE user_id = ? AND date = ?',
-        [emp.status, emp.user_id, date]
+        'UPDATE employee_attendance SET status = ? WHERE PR_Emp_id = ? AND date = ?',
+        [emp.status, emp.PR_Emp_id, date]
       );
 
       if (result.affectedRows === 0) {
         await conn.query(
-          'INSERT INTO employee_attendance (user_id, status, date) VALUES (?, ?, ?)',
-          [emp.user_id, emp.status, date]
+          'INSERT INTO employee_attendance (PR_Emp_id, status, date) VALUES (?, ?, ?)',
+          [emp.PR_Emp_id, emp.status, date]
         );
       }
     }

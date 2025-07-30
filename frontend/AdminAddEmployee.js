@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, Button, StyleSheet, Alert,
-  KeyboardAvoidingView, Platform
+  KeyboardAvoidingView, Platform, TouchableOpacity
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialIcons } from '@expo/vector-icons';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { Backend_Url } from './Backend_url';
 
 export default function AdminAddEmployee({ onEmployeeAdded }) {
   const [form, setForm] = useState({
-    user_id: '', name: '', email: '', phone: '', dob: '',
-    gender: '', department_id: '', designation_id: '',
-    doj: '', work_location_id: '', PR_EMP_STATUS: 'Active'
+    PR_Emp_id: '', PR_EMP_Full_Name: '', PR_EMP_Email: '', PR_phoneNumber: '',
+    PR_EMP_Gender: '', PR_EMP_Department_ID: '', PR_EMP_Designation_ID: '',
+    PR_EMP_DOB: '', PR_EMP_DOJ: '', PR_EMP_Work_Location_Name: '', PR_EMP_STATUS: 'Active'
   });
 
   const [departments, setDepartments] = useState([]);
@@ -30,6 +31,9 @@ export default function AdminAddEmployee({ onEmployeeAdded }) {
   const [departmentItems, setDepartmentItems] = useState([]);
   const [designationItems, setDesignationItems] = useState([]);
 
+  const [showDOBPicker, setShowDOBPicker] = useState(false);
+  const [showDOJPicker, setShowDOJPicker] = useState(false);
+
   const handleChange = (key, value) =>
     setForm(prev => ({ ...prev, [key]: value }));
 
@@ -38,12 +42,12 @@ export default function AdminAddEmployee({ onEmployeeAdded }) {
   }, []);
 
   useEffect(() => {
-    if (form.department_id) {
-      fetchDesignationsByDepartment(form.department_id);
+    if (form.PR_EMP_Department_ID) {
+      fetchDesignationsByDepartment(form.PR_EMP_Department_ID);
     } else {
       setDesignationItems([]);
     }
-  }, [form.department_id]);
+  }, [form.PR_EMP_Department_ID]);
 
   const fetchDepartments = async () => {
     try {
@@ -79,8 +83,12 @@ export default function AdminAddEmployee({ onEmployeeAdded }) {
     }
   };
 
+  const formatDate = (date) => {
+    return date.toISOString().split('T')[0]; // YYYY-MM-DD
+  };
+
   const handleSubmit = async () => {
-    const emptyField = Object.entries(form).find(([_, val]) => !val.trim());
+    const emptyField = Object.entries(form).find(([_, val]) => !val || val.trim() === '');
     if (emptyField) {
       Alert.alert('Missing Field', `Please fill ${emptyField[0]} field.`);
       return;
@@ -100,9 +108,9 @@ export default function AdminAddEmployee({ onEmployeeAdded }) {
       }
       Alert.alert('Success', data.message);
       setForm({
-        user_id: '', name: '', email: '', phone: '', dob: '',
-        gender: '', department_id: '', designation_id: '',
-        doj: '', work_location_id: '', PR_EMP_STATUS: 'Active'
+        PR_Emp_id: '', PR_EMP_Full_Name: '', PR_EMP_Email: '', PR_phoneNumber: '',
+        PR_EMP_Gender: '', PR_EMP_Department_ID: '', PR_EMP_Designation_ID: '',
+        PR_EMP_DOB: '', PR_EMP_DOJ: '', PR_EMP_Work_Location_Name: '', PR_EMP_STATUS: 'Active'
       });
       onEmployeeAdded?.();
     } catch (error) {
@@ -123,9 +131,11 @@ export default function AdminAddEmployee({ onEmployeeAdded }) {
 
       <View style={styles.formBox}>
         {[
-          ['User ID', 'user_id'], ['Name', 'name'], ['Email', 'email'],
-          ['Phone', 'phone'], ['DOB (YYYY-MM-DD)', 'dob'],
-          ['Joining Date', 'doj'], ['Work Location ID', 'work_location_id']
+          ['User ID', 'PR_Emp_id'],
+          ['Name', 'PR_EMP_Full_Name'],
+          ['Email', 'PR_EMP_Email'],
+          ['Phone', 'PR_phoneNumber'],
+          ['Work Location', 'PR_EMP_Work_Location_Name'] // ✅ updated label and field
         ].map(([label, key]) => (
           <View key={key} style={styles.inputContainer}>
             <MaterialIcons
@@ -136,7 +146,7 @@ export default function AdminAddEmployee({ onEmployeeAdded }) {
             />
             <TextInput
               placeholder={label}
-              value={form[key]}
+              value={form[key] || ''}
               onChangeText={(text) => handleChange(key, text)}
               style={styles.input}
               placeholderTextColor="#9ca3af"
@@ -144,13 +154,47 @@ export default function AdminAddEmployee({ onEmployeeAdded }) {
           </View>
         ))}
 
+        {/* DOB Picker */}
+        <TouchableOpacity onPress={() => setShowDOBPicker(true)} style={styles.inputContainer}>
+          <MaterialIcons name="cake" size={20} color="#4e8ff7" style={styles.inputIcon} />
+          <Text style={styles.dateInput}>{form.PR_EMP_DOB || 'Select Date of Birth'}</Text>
+        </TouchableOpacity>
+        {showDOBPicker && (
+          <DateTimePicker
+            value={form.PR_EMP_DOB ? new Date(form.PR_EMP_DOB) : new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowDOBPicker(false);
+              if (selectedDate) handleChange('PR_EMP_DOB', formatDate(selectedDate));
+            }}
+          />
+        )}
+
+        {/* DOJ Picker */}
+        <TouchableOpacity onPress={() => setShowDOJPicker(true)} style={styles.inputContainer}>
+          <MaterialIcons name="event" size={20} color="#4e8ff7" style={styles.inputIcon} />
+          <Text style={styles.dateInput}>{form.PR_EMP_DOJ || 'Select Joining Date'}</Text>
+        </TouchableOpacity>
+        {showDOJPicker && (
+          <DateTimePicker
+            value={form.PR_EMP_DOJ ? new Date(form.PR_EMP_DOJ) : new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowDOJPicker(false);
+              if (selectedDate) handleChange('PR_EMP_DOJ', formatDate(selectedDate));
+            }}
+          />
+        )}
+
         {/* Gender Dropdown */}
         <DropDownPicker
           open={genderOpen}
-          value={form.gender}
+          value={form.PR_EMP_Gender}
           items={genderItems}
           setOpen={setGenderOpen}
-          setValue={value => handleChange('gender', value())}
+          setValue={value => handleChange('PR_EMP_Gender', value())}
           placeholder="Select Gender"
           style={styles.dropdown}
           dropDownContainerStyle={styles.dropdownBox}
@@ -160,10 +204,10 @@ export default function AdminAddEmployee({ onEmployeeAdded }) {
         {/* Department Dropdown */}
         <DropDownPicker
           open={departmentOpen}
-          value={form.department_id}
+          value={form.PR_EMP_Department_ID}
           items={departmentItems}
           setOpen={setDepartmentOpen}
-          setValue={value => handleChange('department_id', value())}
+          setValue={value => handleChange('PR_EMP_Department_ID', value())}
           placeholder="Select Department"
           style={styles.dropdown}
           dropDownContainerStyle={styles.dropdownBox}
@@ -173,10 +217,10 @@ export default function AdminAddEmployee({ onEmployeeAdded }) {
         {/* Designation Dropdown */}
         <DropDownPicker
           open={designationOpen}
-          value={form.designation_id}
+          value={form.PR_EMP_Designation_ID}
           items={designationItems}
           setOpen={setDesignationOpen}
-          setValue={value => handleChange('designation_id', value())}
+          setValue={value => handleChange('PR_EMP_Designation_ID', value())}
           placeholder={designationItems.length > 0 ? "Select Designation" : "No Designations Available"}
           disabled={designationItems.length === 0}
           style={styles.dropdown}
@@ -194,13 +238,11 @@ export default function AdminAddEmployee({ onEmployeeAdded }) {
 
 const getIconForField = (field) => {
   switch (field) {
-    case 'user_id': return 'badge';
-    case 'name': return 'person';
-    case 'email': return 'email';
-    case 'phone': return 'phone';
-    case 'dob': return 'cake';
-    case 'doj': return 'event';
-    case 'work_location_id': return 'place';
+    case 'PR_Emp_id': return 'badge';
+    case 'PR_EMP_Full_Name': return 'person';
+    case 'PR_EMP_Email': return 'email';
+    case 'PR_phoneNumber': return 'phone';
+    case 'PR_EMP_Work_Location_Name': return 'place';
     default: return 'info';
   }
 };
@@ -238,6 +280,15 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   input: {
+    flex: 1,
+    borderColor: '#4e8ff7',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    color: '#111827',
+    backgroundColor: '#ffffff',
+  },
+  dateInput: {
     flex: 1,
     borderColor: '#4e8ff7',
     borderWidth: 1,

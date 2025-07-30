@@ -4,18 +4,19 @@ import {
   StyleSheet, Alert, TouchableOpacity
 } from 'react-native';
 import { Backend_Url } from './Backend_url';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 
 export default function AdminActiveEmployees() {
   const [employees, setEmployees] = useState([]);
   const isFocused = useIsFocused();
+  const navigation = useNavigation();
 
   const fetchEmployees = async () => {
     try {
       const res = await fetch(`${Backend_Url}/api/employees`);
       const data = await res.json();
       setEmployees(data);
-    } catch {
+    } catch (error) {
       Alert.alert('❌ Failed to fetch employees');
     }
   };
@@ -41,9 +42,17 @@ export default function AdminActiveEmployees() {
 
       {employees.map(emp => (
         <View key={emp.id} style={styles.card}>
-          <Text style={styles.name}>{emp.name}</Text>
-          <Text style={styles.detail}>📧 {emp.email}</Text>
-          <Text style={styles.detail}>📞 {emp.phone}</Text>
+          {/* ✅ Tapping employee name navigates to history screen */}
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate('AdminEmployeeHistoryScreen', { PR_Emp_id: emp.PR_Emp_id })
+            }
+          >
+            <Text style={styles.name}>{emp.PR_EMP_Full_Name}</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.detail}>📧 {emp.PR_EMP_Email}</Text>
+          <Text style={styles.detail}>📞 {emp.PR_phoneNumber}</Text>
 
           <TouchableOpacity
             style={styles.deactivateButton}

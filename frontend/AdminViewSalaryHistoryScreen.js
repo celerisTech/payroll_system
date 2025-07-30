@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TouchableOpacity
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  Alert,
+  TouchableOpacity,
+  Platform,
 } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import axios from 'axios';
@@ -33,113 +40,107 @@ const AdminViewSalaryHistoryScreen = () => {
   const fetchEmployees = async () => {
     try {
       const res = await axios.get(`${Backend_Url}/api/salary/history-employees`);
-      setEmployees(res.data.data);
-      setDropdownItems(res.data.data.map(emp => ({
-        label: emp.name,
-        value: emp.user_id
-      })));
+      const employees = res.data.data;
+      setEmployees(employees);
+      setDropdownItems(
+        employees.map(emp => ({
+          label: emp.PR_EMP_Full_Name,
+          value: emp.PR_Emp_id,
+        }))
+      );
     } catch (err) {
-      Alert.alert("Error", "Failed to load employees.");
+      Alert.alert('Error', 'Failed to load employees.');
     }
   };
 
-  const fetchSalaryHistory = async (user_id) => {
+  const fetchSalaryHistory = async PR_Emp_id => {
     setLoading(true);
     try {
-      const res = await axios.get(`${Backend_Url}/api/salary/history/${user_id}`);
+      const res = await axios.get(`${Backend_Url}/api/salary/history/${PR_Emp_id}`);
       setSalaryHistory(res.data.data);
     } catch (err) {
       setSalaryHistory([]);
-      Alert.alert("Error", "No salary history found.");
+      Alert.alert('Error', 'No salary history found.');
     } finally {
       setLoading(false);
     }
   };
 
   const generatePDF = async () => {
-    let dataToPrint = [];
+  if (salaryHistory.length === 0) {
+    Alert.alert('No Data', 'No salary records available to generate PDF.');
+    return;
+  }
 
-    if (selectedEmployee) {
-      const emp = employees.find(e => e.user_id === selectedEmployee);
-      dataToPrint = salaryHistory.map(item => ({ ...item, employee_name: emp?.name }));
-    } else {
-      const allEmpRes = await axios.get(`${Backend_Url}/api/salary/history-employees`);
-      const allData = [];
+  const htmlContent = `
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          body { font-family: Arial; padding: 20px; }
+          h1 { text-align: center; }
+          .item { border-bottom: 1px solid #ccc; padding: 10px 0; }
+          .item strong { display: inline-block; width: 120px; }
+        </style>
+      </head>
+      <body>
+        <h1>Salary Report</h1>
+        ${salaryHistory
+          .map(
+            item => `
+              <div class="item">
+                <strong>Month:</strong> ${item.PR_ST_Month_Year}<br/>
+                <strong>Basic:</strong> ₹${item.PR_ST_Basic}<br/>
+                <strong>HRA:</strong> ₹${item.PR_ST_HRA}<br/>
+                <strong>Other:</strong> ₹${item.PR_ST_Other_Allow}<br/>
+                <strong>Gross:</strong> ₹${item.PR_ST_Gross_Salary}<br/>
+                <strong>Deductions:</strong> ₹${item.PR_ST_Deductions}<br/>
+                <strong>Net:</strong> ₹${item.PR_ST_Net_Salary}<br/>
+              </div>
+            `
+          )
+          .join('')}
+      </body>
+    </html>
+  `;
 
-      for (const emp of allEmpRes.data.data) {
-        try {
-          const res = await axios.get(`${Backend_Url}/api/salary/history/${emp.user_id}`);
-          res.data.data.forEach(sal => {
-            allData.push({ ...sal, employee_name: emp.name });
-          });
-        } catch {}
-      }
+  try {
+    console.log('Generating PDF...');
+    const result = await Print.printToFileAsync({ html: htmlContent });
 
-      dataToPrint = allData;
-    }
-
-    if (dataToPrint.length === 0) {
-      Alert.alert("No data", "No salary records to download.");
+    if (!result || !result.uri) {
+      console.error('❌ printToFileAsync failed. Result:', result);
+      Alert.alert('Error', 'PDF could not be created.');
       return;
     }
 
-    const htmlContent = `
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <style>
-            body { font-family: Arial; padding: 20px; }
-            h1 { text-align: center; }
-            .item { border-bottom: 1px solid #ccc; padding: 10px 0; }
-            .item strong { display: inline-block; width: 120px; }
-          </style>
-        </head>
-        <body>
-          <h1>Salary Report</h1>
-          ${dataToPrint.map(item => `
-            <div class="item">
-              <strong>Employee:</strong> ${item.employee_name}<br/>
-              <strong>Month:</strong> ${item.PR_ST_Month_Year}<br/>
-              <strong>Basic:</strong> ₹${item.PR_ST_Basic}<br/>
-              <strong>HRA:</strong> ₹${item.PR_ST_HRA}<br/>
-              <strong>Other:</strong> ₹${item.PR_ST_Other_Allow}<br/>
-              <strong>Gross:</strong> ₹${item.PR_ST_Gross_Salary}<br/>
-              <strong>Deductions:</strong> ₹${item.PR_ST_Deductions}<br/>
-              <strong>Net:</strong> ₹${item.PR_ST_Net_Salary}<br/>
-            </div>
-          `).join('')}
-        </body>
-      </html>
-    `;
+    const { uri } = result;
+    console.log('✅ PDF URI:', uri);
 
-    try {
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
-
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Please allow media permissions to save PDF.');
-        return;
-      }
-
-      // Move to document directory (more stable)
-      const fileName = uri.split('/').pop();
-      const newPath = `${FileSystem.documentDirectory}${fileName}`;
-      await FileSystem.copyAsync({ from: uri, to: newPath });
-
-      // Save to gallery
-      const asset = await MediaLibrary.createAssetAsync(newPath);
-      await MediaLibrary.createAlbumAsync('PayrollPDFs', asset, false);
-
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(newPath);
-      }
-
-      Alert.alert('Success', 'PDF saved and ready to share.');
-    } catch (err) {
-      console.error("PDF generation error:", err);
-      Alert.alert("Error", "Failed to generate PDF.");
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Media access is required to save PDF.');
+      return;
     }
-  };
+
+    const fileName = uri.split('/').pop();
+    const newPath = `${FileSystem.documentDirectory}${fileName}`;
+    await FileSystem.copyAsync({ from: uri, to: newPath });
+
+    const asset = await MediaLibrary.createAssetAsync(newPath);
+    await MediaLibrary.createAlbumAsync('PayrollPDFs', asset, false);
+
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(newPath);
+    }
+
+    Alert.alert('Success', 'PDF saved to gallery and ready to share.');
+  } catch (err) {
+    console.error('❌ PDF generation error:', err);
+    Alert.alert('Error', 'Failed to generate or save PDF.');
+  }
+};
+
 
   return (
     <View style={styles.container}>
@@ -168,7 +169,7 @@ const AdminViewSalaryHistoryScreen = () => {
       ) : salaryHistory.length > 0 ? (
         <FlatList
           data={salaryHistory}
-          keyExtractor={(item) => item.PR_ST_ID.toString()}
+          keyExtractor={item => item.PR_ST_ID.toString()}
           renderItem={({ item }) => (
             <View style={styles.card}>
               <Text style={styles.month}>{item.PR_ST_Month_Year}</Text>
@@ -192,7 +193,12 @@ export default AdminViewSalaryHistoryScreen;
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#fff' },
-  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
   dropdown: { marginBottom: 20, borderColor: '#ccc' },
   dropdownContainer: { borderColor: '#ccc' },
   card: {
@@ -209,10 +215,10 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 5,
     alignItems: 'center',
-    marginBottom: 15
+    marginBottom: 15,
   },
   downloadText: {
     color: 'white',
     fontWeight: 'bold',
-  }
+  },
 });

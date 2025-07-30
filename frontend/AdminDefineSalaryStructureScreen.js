@@ -32,8 +32,8 @@ const AdminDefineSalaryStructureScreen = () => {
     try {
       const response = await axios.get(`${Backend_Url}/api/employees/active`);
       const employeeList = response.data.map(emp => ({
-        label: emp.name + ` (ID: ${emp.user_id})`, // 👀 Helpful for debugging
-        value: String(emp.user_id), // ✅ Use user_id as value
+        label: emp.PR_EMP_Full_Name + ` (ID: ${emp.PR_Emp_id})`, // 👀 Helpful for debugging
+        value: String(emp.PR_Emp_id), // ✅ Use user_id as value
       }));
       setItems(employeeList);
       setEmployees(response.data);

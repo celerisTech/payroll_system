@@ -37,7 +37,7 @@ router.post('/leave-approve', async (req, res) => {
     }
 
     const leave = leaveRows[0];
-    const { user_id, leave_type } = leave;
+    const { PR_Emp_id, leave_type } = leave;
     const year = new Date().getFullYear();
 
     // 🔹 2. Update the leave status (removed updated_at)
@@ -72,8 +72,8 @@ router.post('/leave-approve', async (req, res) => {
         `UPDATE pr_leave_master
          SET ${balanceCol} = ${balanceCol} - 1,
              ${takenCol} = ${takenCol} + 1
-         WHERE user_id = ? AND year = ?`,
-        [user_id, year]
+         WHERE PR_Emp_id = ? AND year = ?`,
+        [PR_Emp_id, year]
       );
     }
 
@@ -86,23 +86,23 @@ router.post('/leave-approve', async (req, res) => {
   }
 });
 // ✅ Get Leave History for a Specific User
-router.get('/leave-history/:user_id', async (req, res) => {
-  const { user_id } = req.params;
+router.get('/leave-history/:PR_Emp_id', async (req, res) => {
+  const { PR_Emp_id } = req.params;
 
   try {
     const [history] = await db.query(
       `SELECT transaction_id, leave_type, from_date, from_time, to_date, to_time, leave_status
        FROM pr_leave_transactions
-       WHERE user_id = ?
+       WHERE PR_Emp_id = ?
        ORDER BY from_date DESC`,
-      [user_id]
+      [PR_Emp_id]
     );
 
     if (history.length === 0) {
       return res.status(404).json({ message: 'No leave history found for this user' });
     }
 
-    console.log(`📥 GET /api/manager/leave-history/${user_id}`);
+    console.log(`📥 GET /api/manager/leave-history/${PR_Emp_id}`);
     res.json(history);
 
   } catch (err) {

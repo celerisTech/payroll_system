@@ -15,13 +15,13 @@ router.post('/generate', async (req, res) => {
   try {
     const [employees] = await db.query(`
       SELECT 
-        E.user_id AS PR_Emp_ID,
+        E.PR_Emp_id AS PR_Emp_ID,
         S.PR_SS_Basic,
         S.PR_SS_HRA,
         S.PR_SS_Other_Allow
-      FROM employees E
-JOIN PR_Salary_Structures S ON E.user_id = S.PR_SS_Employee_ID
-WHERE E.is_active = 1
+      FROM PR_Employees_Master E
+JOIN PR_Salary_Structures S ON E.PR_Emp_id = S.PR_SS_Employee_ID
+WHERE E.PR_EMP_Is_Active = 1
 
     `);
 
@@ -111,16 +111,16 @@ router.post('/structure', async (req, res) => {
 });
 
 // ✅ 3. Get salary history for an employee
-router.get('/history/:user_id', async (req, res) => {
-  const { user_id } = req.params;
-  console.log("📥 /history route hit with user_id:", user_id);
+router.get('/history/:PR_Emp_id', async (req, res) => {
+  const { PR_Emp_id } = req.params;
+  console.log("📥 /history route hit with PR_Emp_id:", PR_Emp_id);
 
   try {
     const [history] = await db.query(`
       SELECT * FROM PR_Salary_Transactions 
       WHERE PR_ST_Employee_ID = ? 
       ORDER BY PR_ST_Month_Year DESC
-    `, [user_id]);
+    `, [PR_Emp_id]);
 
     if (!history || history.length === 0) {
       return res.status(404).json({ message: "No salary history found for this employee." });
@@ -138,9 +138,9 @@ router.get('/history/:user_id', async (req, res) => {
 router.get('/history-employees', async (req, res) => {
   try {
     const [results] = await db.query(`
-      SELECT DISTINCT E.user_id, E.name
-      FROM employees E
-      INNER JOIN PR_Salary_Transactions S ON E.user_id = S.PR_ST_Employee_ID
+      SELECT DISTINCT E.PR_Emp_id, E.PR_EMP_Full_Name
+      FROM PR_Employees_Master E
+      INNER JOIN PR_Salary_Transactions S ON E.PR_Emp_id = S.PR_ST_Employee_ID
     `);
     res.status(200).json({ data: results });
   } catch (err) {
@@ -153,9 +153,9 @@ router.get('/history-employees', async (req, res) => {
 router.get('/structure-employees', async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT E.user_id, E.name 
-      FROM employees E
-      JOIN PR_Salary_Structures S ON E.user_id = S.PR_SS_Employee_ID
+      SELECT E.PR_Emp_id, E.PR_EMP_Full_Name 
+      FROM PR_Employees_Master E
+      JOIN PR_Salary_Structures S ON E.PR_Emp_id = S.PR_SS_Employee_ID
       WHERE E.PR_EMP_STATUS = 'Active'
     `);
     res.status(200).json({ data: rows });

@@ -14,7 +14,7 @@ export default function AdminInactiveEmployees() {
     try {
       const res = await fetch(`${Backend_Url}/api/employees/all`);
       const data = await res.json();
-      setEmployees(data.filter(emp => emp.is_active === 0));
+      setEmployees(data.filter(emp => emp.PR_EMP_Is_Active === 0));
     } catch {
       Alert.alert('❌ Failed to fetch employees');
     }
@@ -43,9 +43,9 @@ export default function AdminInactiveEmployees() {
 
       {employees.map(emp => (
         <View key={emp.id} style={styles.card}>
-          <Text style={styles.name}>{emp.name}</Text>
-          <Text style={styles.detail}>📧 {emp.email}</Text>
-          <Text style={styles.detail}>📞 {emp.phone}</Text>
+          <Text style={styles.name}>{emp.PR_EMP_Full_Name}</Text>
+          <Text style={styles.detail}>📧 {emp.PR_EMP_Email}</Text>
+          <Text style={styles.detail}>📞 {emp.PR_phoneNumber}</Text>
 
           <TouchableOpacity
             style={styles.reactivateButton}

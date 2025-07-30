@@ -95,7 +95,7 @@ export default function AttendanceMarkScreen() {
             onPress={() => toggleStatus(idx)}
             className="bg-purple-800 p-4 rounded-xl mb-3"
           >
-            <Text className="text-white text-lg font-bold">{emp.name}</Text>
+            <Text className="text-white text-lg font-bold">{emp.PR_EMP_Full_Name}</Text>
             <Text className="text-purple-300 text-sm mb-2">ID: {emp.id}</Text>
             <Text className={`font-bold ${emp.status === 'Present' ? 'text-green-400' : 'text-red-400'}`}>
               {emp.status}

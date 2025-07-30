@@ -22,8 +22,8 @@ const AdminGenerateSalaryScreen = () => {
     try {
       const res = await axios.get(`${Backend_Url}/api/salary/structure-employees`);
       const list = res.data.data.map(emp => ({
-        label: emp.name,
-        value: String(emp.user_id)
+        label: emp.PR_EMP_Full_Name,
+        value: String(emp.PR_Emp_id)
       }));
       setItems(list);
     } catch (error) {

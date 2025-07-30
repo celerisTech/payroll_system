@@ -6,10 +6,10 @@ const db = require('./db');
 // Total active employees
 router.get('/total-employees', async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT COUNT(*) AS total FROM employees WHERE is_active = 1");
+    const [rows] = await db.query("SELECT COUNT(*) AS total FROM PR_Employees_Master WHERE PR_EMP_Is_Active = 1");
     res.json({ total: rows[0].total });
   } catch (err) {
-    console.error("Error fetching total employees:", err);
+    console.error("Error fetching total PR_Employees_Master:", err);
     res.status(500).json({ error: "Error fetching total employees" });
   }
 });
@@ -20,8 +20,8 @@ router.get('/present-today', async (req, res) => {
     const [rows] = await db.query(`
       SELECT COUNT(*) AS count
       FROM employee_attendance a
-      JOIN employees e ON a.user_id = e.user_id
-      WHERE a.date = CURDATE() AND a.status = 'Present' AND e.is_active = 1
+      JOIN PR_Employees_Master e ON a.PR_Emp_id = e.PR_Emp_id
+      WHERE a.date = CURDATE() AND a.status = 'Present' AND e.PR_EMP_Is_Active = 1
     `);
     res.json({ count: rows[0].count });
   } catch (err) {
@@ -35,10 +35,10 @@ router.get('/absent-today', async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT COUNT(*) AS count
-      FROM employees e
-      WHERE e.is_active = 1
-      AND e.user_id NOT IN (
-        SELECT user_id FROM employee_attendance
+      FROM PR_Employees_Master e
+      WHERE e.PR_EMP_Is_Active = 1
+      AND e.PR_Emp_id NOT IN (
+        SELECT PR_Emp_id FROM employee_attendance
         WHERE date = CURDATE() AND status = 'Present'
       )
     `);

@@ -23,9 +23,9 @@ export default function EmployeeDashboard({ userId, onLogout }) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>👤 Employee Dashboard</Text>
-      <Text>Name: {employee.name}</Text>
-      <Text>Email: {employee.email}</Text>
-      <Text>Phone: {employee.phone}</Text>
+      <Text>Name: {employee.PR_EMP_Full_Name}</Text>
+      <Text>Email: {employee.PR_EMP_Email}</Text>
+      <Text>Phone: {employee.PR_phoneNumber}</Text>
       <Text>Designation ID: {employee.designation_id}</Text>
       <Button title="Logout 🔙" onPress={onLogout} color="#ff4d4d" />
     </View>

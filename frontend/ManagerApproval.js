@@ -52,7 +52,7 @@ export default function ManagerApproval() {
       ) : (
         requests.map(req => (
           <View key={req.transaction_id} style={styles.card}>
-            <Text style={styles.inline}>User ID: {req.user_id}</Text>
+            <Text style={styles.inline}>User ID: {req.PR_Emp_id}</Text>
             <Text style={styles.inline}>Leave Type: {req.leave_type}</Text>
             <Text style={styles.inline}>From: {req.from_date} {req.from_time}</Text>
             <Text style={styles.inline}>To: {req.to_date} {req.to_time}</Text>
