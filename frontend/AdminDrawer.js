@@ -21,18 +21,15 @@ import AdminDefineSalaryStructureScreen from './AdminDefineSalaryStructureScreen
 import AdminViewSalaryHistoryScreen from './AdminViewSalaryHistoryScreen';
 import LeaveDashboard from './LeaveDashboard';
 import ManagerApproval from './ManagerApproval';
-import AdminEmployeeHistoryScreen from './AdminEmployeeHistoryScreen'; // ✅ added here
+import AdminEmployeeHistoryScreen from './AdminEmployeeHistoryScreen';
 
 const Drawer = createDrawerNavigator();
 
 function CustomDrawerContent({ navigation }) {
-  const [openSections, setOpenSections] = useState({});
+  const [openSection, setOpenSection] = useState(null); // ⬅️ Only one section open at a time
 
   const toggleSection = (section) => {
-    setOpenSections((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
+    setOpenSection((prev) => (prev === section ? null : section));
   };
 
   const DrawerSection = ({ title, icon, children }) => (
@@ -41,13 +38,13 @@ function CustomDrawerContent({ navigation }) {
         <MaterialIcons name={icon} size={22} color="#254979" />
         <Text style={styles.sectionText}>{title}</Text>
         <MaterialIcons
-          name={openSections[title] ? 'expand-less' : 'expand-more'}
+          name={openSection === title ? 'expand-less' : 'expand-more'}
           size={20}
           color="#254979"
           style={{ marginLeft: 'auto' }}
         />
       </TouchableOpacity>
-      {openSections[title] && <View style={styles.sectionChildren}>{children}</View>}
+      {openSection === title && <View style={styles.sectionChildren}>{children}</View>}
     </View>
   );
 
@@ -118,41 +115,40 @@ export default function AdminDrawer({ onLogout }) {
   return (
     <NavigationContainer independent={true}>
       <Drawer.Navigator
-  initialRouteName="Dashboard"
-  drawerContent={(props) => <CustomDrawerContent {...props} />}
-  screenOptions={({ navigation }) => ({
-    headerStyle: { backgroundColor: '#254979' },
-    headerTintColor: '#fff',
-    headerTitleAlign: 'center',
-    headerLeft: () => (
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 12 }}>
-        <TouchableOpacity onPress={() => navigation.toggleDrawer()}>
-          <MaterialIcons name="menu" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={{ color: '#fff', marginLeft: 8, fontSize: 16, fontWeight: 'bold' }}>
-          Menu
-        </Text>
-      </View>
-    ),
-  })}
->
-  <Drawer.Screen name="Dashboard" component={AdminDashboard} />
-  <Drawer.Screen name="Add Employee" component={AdminAddEmployee} />
-  <Drawer.Screen name="Active Employees" component={AdminActiveEmployees} />
-  <Drawer.Screen name="Inactive Employees" component={AdminInactiveEmployees} />
-  <Drawer.Screen name="Departments" component={DepartmentsScreen} />
-  <Drawer.Screen name="Designations" component={DesignationsScreen} />
-  <Drawer.Screen name="Leave apply" component={LeaveDashboard} />
-  <Drawer.Screen name="Leave Approval" component={ManagerApproval} />
-  <Drawer.Screen name="Generate Salary" component={AdminGenerateSalaryScreen} />
-  <Drawer.Screen name="Define Salary Structure" component={AdminDefineSalaryStructureScreen} />
-  <Drawer.Screen name="View Salary" component={AdminViewSalaryHistoryScreen} />
-  <Drawer.Screen name="Attendance" component={AdminAttendanceScreen} />
-  <Drawer.Screen name="Mark Attendance" component={MarkAttendanceScreen} />
-  <Drawer.Screen name="Logout" component={LogoutScreen} initialParams={{ onLogout }} />
-  <Drawer.Screen name="AdminEmployeeHistoryScreen" component={AdminEmployeeHistoryScreen} />
-</Drawer.Navigator>
-
+        initialRouteName="Dashboard"
+        drawerContent={(props) => <CustomDrawerContent {...props} />}
+        screenOptions={({ navigation }) => ({
+          headerStyle: { backgroundColor: '#254979' },
+          headerTintColor: '#fff',
+          headerTitleAlign: 'center',
+          headerLeft: () => (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 12 }}>
+              <TouchableOpacity onPress={() => navigation.toggleDrawer()}>
+                <MaterialIcons name="menu" size={24} color="#fff" />
+              </TouchableOpacity>
+              <Text style={{ color: '#fff', marginLeft: 8, fontSize: 16, fontWeight: 'bold' }}>
+                Menu
+              </Text>
+            </View>
+          ),
+        })}
+      >
+        <Drawer.Screen name="Dashboard" component={AdminDashboard} />
+        <Drawer.Screen name="Add Employee" component={AdminAddEmployee} />
+        <Drawer.Screen name="Active Employees" component={AdminActiveEmployees} />
+        <Drawer.Screen name="Inactive Employees" component={AdminInactiveEmployees} />
+        <Drawer.Screen name="Departments" component={DepartmentsScreen} />
+        <Drawer.Screen name="Designations" component={DesignationsScreen} />
+        <Drawer.Screen name="Leave apply" component={LeaveDashboard} />
+        <Drawer.Screen name="Leave Approval" component={ManagerApproval} />
+        <Drawer.Screen name="Generate Salary" component={AdminGenerateSalaryScreen} />
+        <Drawer.Screen name="Define Salary Structure" component={AdminDefineSalaryStructureScreen} />
+        <Drawer.Screen name="View Salary" component={AdminViewSalaryHistoryScreen} />
+        <Drawer.Screen name="Attendance" component={AdminAttendanceScreen} />
+        <Drawer.Screen name="Mark Attendance" component={MarkAttendanceScreen} />
+        <Drawer.Screen name="Logout" component={LogoutScreen} initialParams={{ onLogout }} />
+        <Drawer.Screen name="AdminEmployeeHistoryScreen" component={AdminEmployeeHistoryScreen} />
+      </Drawer.Navigator>
     </NavigationContainer>
   );
 }
@@ -160,9 +156,13 @@ export default function AdminDrawer({ onLogout }) {
 const styles = StyleSheet.create({
   sectionGroup: { marginTop: 20 },
   sectionHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 14, paddingHorizontal: 20,
-    backgroundColor: '#eef3fb', borderBottomWidth: 1, borderColor: '#d0dce7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: '#eef3fb',
+    borderBottomWidth: 1,
+    borderColor: '#d0dce7',
   },
   sectionText: { marginLeft: 12, fontSize: 16, fontWeight: '600', color: '#254979' },
   sectionChildren: { paddingLeft: 24, backgroundColor: '#f8faff' },

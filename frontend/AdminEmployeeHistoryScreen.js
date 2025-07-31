@@ -1,795 +1,544 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, ActivityIndicator, 
-  Dimensions, TouchableOpacity, Modal, FlatList
+  View, Text, ScrollView, StyleSheet,
+  ActivityIndicator, Dimensions, Platform,
+  Pressable
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
+import { FontAwesome5, MaterialIcons, Entypo, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import axios from 'axios';
 import { Backend_Url } from './Backend_url';
-import { AntDesign } from '@expo/vector-icons';
-import moment from 'moment';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
-const AdminEmployeeHistoryScreen = ({ route }) => {
+const screenWidth = Dimensions.get('window').width;
+const chartConfig = {
+  backgroundColor: '#ffffff',
+  backgroundGradientFrom: '#ffffff',
+  backgroundGradientTo: '#ffffff',
+  decimalPlaces: 0,
+  color: (opacity = 1) => `rgba(108, 92, 231, ${opacity})`,
+  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+  style: {
+    borderRadius: 16
+  },
+  propsForDots: {
+    r: '6',
+    strokeWidth: '2',
+    stroke: '#6c5ce7'
+  },
+  propsForBackgroundLines: {
+    strokeWidth: 1,
+    stroke: 'rgba(0,0,0,0.1)',
+    strokeDasharray: '0'
+  },
+  propsForLabels: {
+    fontSize: 12
+  }
+};
+
+export default function AdminEmployeeHistoryScreen({ route }) {
   const { PR_Emp_id } = route.params;
   const [history, setHistory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('attendance');
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedData, setSelectedData] = useState([]);
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState(moment().month());
-  const [selectedYear, setSelectedYear] = useState(moment().year());
-  const [years, setYears] = useState([]);
-  const months = moment.months();
+  const [startMonth, setStartMonth] = useState(null);
+  const [endMonth, setEndMonth] = useState(null);
+  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState('start');
 
   useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const response = await axios.get(`${Backend_Url}/api/employees/history/${PR_Emp_id}`);
-        setHistory(response.data);
-        
-        // Generate years array based on employee's joining date
-        const startYear = response.data.basic?.PR_EMP_DOJ ? 
-          moment(response.data.basic.PR_EMP_DOJ).year() : 
-          moment().year() - 5;
-        const currentYear = moment().year();
-        const yearsArray = [];
-        for (let year = startYear; year <= currentYear; year++) {
-          yearsArray.push(year);
-        }
-        setYears(yearsArray);
-        
-        // Set default to current month/year
-        setSelectedMonth(moment().month());
-        setSelectedYear(moment().year());
-      } catch (error) {
-        console.error('Error fetching history:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchHistory();
+    axios.get(`${Backend_Url}/api/employees/history/${PR_Emp_id}`)
+      .then(res => setHistory(res.data))
+      .catch(err => console.error(err))
+      .finally(() => setLoading(false));
   }, [PR_Emp_id]);
 
-  const filterDataByMonthYear = (data, dateField) => {
-    if (!selectedMonth || !selectedYear) return data;
-    
+  const showPicker = (target) => {
+    setPickerTarget(target);
+    setDatePickerVisible(true);
+  };
+
+  const hidePicker = () => setDatePickerVisible(false);
+
+  const handleConfirm = (date) => {
+    const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    if (pickerTarget === 'start') {
+      setStartMonth(formattedDate);
+    } else {
+      setEndMonth(formattedDate);
+    }
+    hidePicker();
+  };
+
+  const filterByMonthRange = (data, field) => {
+    if (!startMonth || !endMonth) return data;
+    const [startYear, startMonthNum] = startMonth.split('-').map(Number);
+    const [endYear, endMonthNum] = endMonth.split('-').map(Number);
+    const startDate = new Date(startYear, startMonthNum - 1);
+    const endDate = new Date(endYear, endMonthNum);
+
     return data.filter(item => {
-      const itemDate = moment(dateField === 'attendance' ? item.date : item.created_at);
-      return itemDate.month() === selectedMonth && itemDate.year() === selectedYear;
+      const itemDate = new Date(item[field]);
+      return itemDate >= startDate && itemDate <= endDate;
     });
   };
 
-  const calculateAttendanceStats = () => {
-    if (!history?.attendance) return { percentage: 0, present: 0, absent: 0, total: 0 };
-    
-    const filteredData = filterDataByMonthYear(history.attendance, 'attendance');
-    const present = filteredData.filter(a => a.status === 'Present').length;
-    const absent = filteredData.filter(a => a.status === 'Absent').length;
-    const total = filteredData.length;
-    const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-
-    return { percentage, present, absent, total };
+  const calcSalary = data => {
+    const arr = data.map(s => parseFloat(s.PR_ST_Net_Salary) || 0);
+    return {
+      total: arr.length,
+      average: arr.length ? Math.round(arr.reduce((a, b) => a + b) / arr.length) : 0,
+      highest: arr.length ? Math.max(...arr) : 0,
+      data: arr
+    };
   };
 
-  const calculateLeaveStats = () => {
-    if (!history?.leaves) return { approved: 0, pending: 0, rejected: 0, total: 0 };
-    
-    const filteredData = filterDataByMonthYear(history.leaves, 'leave');
-    const approved = filteredData.filter(l => l.leave_status === 'Approved').length;
-    const pending = filteredData.filter(l => l.leave_status === 'Pending').length;
-    const rejected = filteredData.filter(l => l.leave_status === 'Rejected').length;
-    const total = filteredData.length;
-
-    return { approved, pending, rejected, total };
+  const calcAttendance = data => {
+    const present = data.filter(a => a.status === 'Present').length;
+    const absent = data.filter(a => a.status === 'Absent').length;
+    const total = data.length;
+    return { 
+      present, 
+      absent, 
+      total, 
+      percentage: total ? Math.round((present / total) * 100) : 0,
+      data: [
+        { name: 'Present', count: present, color: '#4CAF50', legendFontColor: '#7F7F7F' },
+        { name: 'Absent', count: absent, color: '#F44336', legendFontColor: '#7F7F7F' }
+      ]
+    };
   };
 
-  const calculateSalaryStats = () => {
-    if (!history?.salary) return { average: 0, highest: 0, total: 0 };
-    
-    const filteredData = filterDataByMonthYear(history.salary, 'salary');
-    const total = filteredData.length;
-    
-    if (total === 0) return { average: 0, highest: 0, total: 0 };
-    
-    const amounts = filteredData.map(s => parseFloat(s.PR_ST_Net_Salary) || 0);
-    const sum = amounts.reduce((a, b) => a + b, 0);
-    const average = Math.round(sum / total);
-    const highest = Math.max(...amounts);
-
-    return { average, highest, total };
+  const calcLeave = data => {
+    const approved = data.filter(l => l.leave_status === 'Approved').length;
+    const pending = data.filter(l => l.leave_status === 'Pending').length;
+    const rejected = data.filter(l => l.leave_status === 'Rejected').length;
+    return { 
+      approved, 
+      pending, 
+      rejected, 
+      total: data.length,
+      data: [
+        { name: 'Approved', count: approved, color: '#4CAF50', legendFontColor: '#7F7F7F' },
+        { name: 'Pending', count: pending, color: '#FFC107', legendFontColor: '#7F7F7F' },
+        { name: 'Rejected', count: rejected, color: '#F44336', legendFontColor: '#7F7F7F' }
+      ]
+    };
   };
 
-  const openDetailsModal = (data, type) => {
-    const filteredData = filterDataByMonthYear(data, type);
-    setSelectedData(filteredData);
-    setModalVisible(true);
+  const downloadPDF = async () => {
+    try {
+      const content = `
+        <html><body>
+        <h1 style="color: #6c5ce7;">Employee Report</h1>
+        <p><strong>Employee ID:</strong> ${PR_Emp_id}</p>
+        <p><strong>Date Range:</strong> ${startMonth || 'All'} to ${endMonth || 'All'}</p>
+        <p><strong>Report Type:</strong> ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</p>
+        </body></html>
+      `;
+      const { uri } = await Print.printToFileAsync({ html: content });
+      await Sharing.shareAsync(uri);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    }
   };
 
-  const handleMonthYearSelect = () => {
-    setShowMonthPicker(false);
-  };
+  if (loading) return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#6c5ce7" />
+    </View>
+  );
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6c5ce7" />
-        <Text style={styles.loadingText}>Loading employee history...</Text>
-      </View>
-    );
-  }
+  const salaryData = filterByMonthRange(history?.salary || [], 'PR_ST_Month_Year');
+  const attendanceData = filterByMonthRange(history?.attendance || [], 'date');
+  const leaveData = filterByMonthRange(history?.leaves || [], 'created_at');
 
-  if (!history) {
-    return (
-      <View style={styles.noDataContainer}>
-        <Text style={styles.noDataText}>No history found for this employee</Text>
-      </View>
-    );
-  }
-
-  const attendanceStats = calculateAttendanceStats();
-  const leaveStats = calculateLeaveStats();
-  const salaryStats = calculateSalaryStats();
+  const salaryStats = calcSalary(salaryData);
+  const attendanceStats = calcAttendance(attendanceData);
+  const leaveStats = calcLeave(leaveData);
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.header}>
+        <MaterialCommunityIcons name="account-details" size={28} color="#6c5ce7" />
         <Text style={styles.headerTitle}>Employee History</Text>
-        <Text style={styles.headerSubtitle}>ID: {PR_Emp_id}</Text>
       </View>
+      <Text style={styles.subTitle}>ID: {PR_Emp_id}</Text>
 
-      {/* Month/Year Filter */}
-      <View style={styles.filterContainer}>
-        <TouchableOpacity 
-          style={styles.monthFilterButton}
-          onPress={() => setShowMonthPicker(!showMonthPicker)}
+      {/* Month Range Picker */}
+      <View style={styles.dateRow}>
+        <Pressable 
+          style={styles.dateButton} 
+          onPress={() => showPicker('start')}
         >
-          <AntDesign name="calendar" size={20} color="#6c5ce7" />
-          <Text style={styles.monthFilterText}>
-            {months[selectedMonth]} {selectedYear}
+          <MaterialIcons name="date-range" size={20} color="#6c5ce7" />
+          <Text style={styles.dateButtonText}>
+            {startMonth ? startMonth : 'Select Start Month'}
           </Text>
-          <AntDesign 
-            name={showMonthPicker ? "up" : "down"} 
-            size={16} 
-            color="#6c5ce7" 
-            style={styles.dropdownIcon}
-          />
-        </TouchableOpacity>
+        </Pressable>
+        
+        <Text style={styles.dateSeparator}>to</Text>
+        
+        <Pressable 
+          style={styles.dateButton} 
+          onPress={() => showPicker('end')}
+        >
+          <MaterialIcons name="date-range" size={20} color="#6c5ce7" />
+          <Text style={styles.dateButtonText}>
+            {endMonth ? endMonth : 'Select End Month'}
+          </Text>
+        </Pressable>
       </View>
 
-      {showMonthPicker && (
-        <View style={styles.pickerContainer}>
-          <View style={styles.pickerRow}>
-            <Picker
-              selectedValue={selectedMonth}
-              style={styles.picker}
-              onValueChange={(itemValue) => setSelectedMonth(itemValue)}
-              mode="dropdown"
-            >
-              {months.map((month, index) => (
-                <Picker.Item key={index} label={month} value={index} />
-              ))}
-            </Picker>
-            
-            <Picker
-              selectedValue={selectedYear}
-              style={styles.picker}
-              onValueChange={(itemValue) => setSelectedYear(itemValue)}
-              mode="dropdown"
-            >
-              {years.map((year) => (
-                <Picker.Item key={year} label={year.toString()} value={year} />
-              ))}
-            </Picker>
+      <DateTimePickerModal
+        isVisible={isDatePickerVisible}
+        mode="date"
+        display="spinner"
+        onConfirm={handleConfirm}
+        onCancel={hidePicker}
+        maximumDate={new Date()}
+      />
+
+      {/* Tab Switch */}
+      <View style={styles.tabRow}>
+        {[
+          { key: 'attendance', icon: 'calendar-check' },
+          { key: 'leave', icon: 'beach-access' },
+          { key: 'salary', icon: 'attach-money' }
+        ].map(tab => (
+          <Pressable 
+            key={tab.key} 
+            onPress={() => setActiveTab(tab.key)} 
+            style={({ pressed }) => [
+              styles.tab, 
+              activeTab === tab.key && styles.activeTab,
+              pressed && styles.pressedTab
+            ]}
+          >
+            <MaterialIcons 
+              name={tab.icon} 
+              size={24} 
+              color={activeTab === tab.key ? '#6c5ce7' : '#555'} 
+            />
+            <Text style={activeTab === tab.key ? styles.activeTabText : styles.tabText}>
+              {tab.key.toUpperCase()}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {/* Download Button */}
+      <Pressable 
+        style={({ pressed }) => [
+          styles.downloadButton,
+          pressed && styles.pressedButton
+        ]} 
+        onPress={downloadPDF}
+      >
+        <MaterialIcons name="picture-as-pdf" size={24} color="white" />
+        <Text style={styles.downloadButtonText}>Generate Report</Text>
+      </Pressable>
+
+      {/* Summary Cards with Charts */}
+      {activeTab === 'attendance' && (
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <FontAwesome5 name="calendar-alt" size={24} color="#6c5ce7" />
+            <Text style={styles.cardTitle}>Attendance Overview</Text>
           </View>
           
-          <TouchableOpacity 
-            style={styles.applyButton}
-            onPress={handleMonthYearSelect}
-          >
-            <Text style={styles.applyButtonText}>Apply</Text>
-          </TouchableOpacity>
+          <PieChart
+            data={attendanceStats.data}
+            width={screenWidth - 40}
+            height={220}
+            chartConfig={chartConfig}
+            accessor="count"
+            backgroundColor="transparent"
+            paddingLeft="15"
+            absolute
+            style={styles.chart}
+            hasLegend={true}
+            avoidFalseZero={true}
+          />
+
+          <View style={styles.statsGrid}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{attendanceStats.percentage}%</Text>
+              <Text style={styles.statLabel}>Rate</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{attendanceStats.present}</Text>
+              <Text style={styles.statLabel}>Present</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{attendanceStats.absent}</Text>
+              <Text style={styles.statLabel}>Absent</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{attendanceStats.total}</Text>
+              <Text style={styles.statLabel}>Total</Text>
+            </View>
+          </View>
         </View>
       )}
 
-      {/* Tab Navigation */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity 
-          style={[styles.tabButton, activeTab === 'attendance' && styles.activeTab]}
-          onPress={() => setActiveTab('attendance')}
-        >
-          <Text style={[styles.tabText, activeTab === 'attendance' && styles.activeTabText]}>Attendance</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tabButton, activeTab === 'leave' && styles.activeTab]}
-          onPress={() => setActiveTab('leave')}
-        >
-          <Text style={[styles.tabText, activeTab === 'leave' && styles.activeTabText]}>Leave</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tabButton, activeTab === 'salary' && styles.activeTab]}
-          onPress={() => setActiveTab('salary')}
-        >
-          <Text style={[styles.tabText, activeTab === 'salary' && styles.activeTabText]}>Salary</Text>
-        </TouchableOpacity>
-      </View>
+      {activeTab === 'leave' && (
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="beach-access" size={24} color="#FF9800" />
+            <Text style={styles.cardTitle}>Leave Summary</Text>
+          </View>
+          
+          <PieChart
+            data={leaveStats.data}
+            width={screenWidth - 40}
+            height={220}
+            chartConfig={chartConfig}
+            accessor="count"
+            backgroundColor="transparent"
+            paddingLeft="15"
+            absolute
+            style={styles.chart}
+            hasLegend={true}
+            avoidFalseZero={true}
+          />
 
-      {/* Content Area */}
-      <ScrollView contentContainerStyle={styles.contentContainer}>
-        {/* Attendance Summary */}
-        {activeTab === 'attendance' && (
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Attendance Summary</Text>
-            <View style={styles.gridContainer}>
-              <TouchableOpacity 
-                style={[styles.summaryCard, styles.percentageCard]}
-                onPress={() => openDetailsModal(history.attendance, 'attendance')}
-              >
-                <Text style={styles.summaryPercentage}>{attendanceStats.percentage}%</Text>
-                <Text style={styles.summaryLabel}>Attendance Rate</Text>
-                <View style={styles.viewDetails}>
-                  <Text style={styles.viewDetailsText}>View Details</Text>
-                  <AntDesign name="arrowright" size={16} color="#6c5ce7" />
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.summaryCard}
-                onPress={() => openDetailsModal(
-                  history.attendance.filter(a => a.status === 'Present'), 
-                  'attendance'
-                )}
-              >
-                <Text style={[styles.summaryNumber, styles.present]}>{attendanceStats.present}</Text>
-                <Text style={styles.summaryLabel}>Present Days</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.summaryCard}
-                onPress={() => openDetailsModal(
-                  history.attendance.filter(a => a.status === 'Absent'), 
-                  'attendance'
-                )}
-              >
-                <Text style={[styles.summaryNumber, styles.absent]}>{attendanceStats.absent}</Text>
-                <Text style={styles.summaryLabel}>Absent Days</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.summaryCard}
-                onPress={() => openDetailsModal(history.attendance, 'attendance')}
-              >
-                <Text style={styles.summaryNumber}>{attendanceStats.total}</Text>
-                <Text style={styles.summaryLabel}>Total Days</Text>
-              </TouchableOpacity>
+          <View style={styles.statsGrid}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: '#4CAF50' }]}>{leaveStats.approved}</Text>
+              <Text style={styles.statLabel}>Approved</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: '#FFC107' }]}>{leaveStats.pending}</Text>
+              <Text style={styles.statLabel}>Pending</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: '#F44336' }]}>{leaveStats.rejected}</Text>
+              <Text style={styles.statLabel}>Rejected</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{leaveStats.total}</Text>
+              <Text style={styles.statLabel}>Total</Text>
             </View>
           </View>
-        )}
-
-        {/* Leave Summary */}
-        {activeTab === 'leave' && (
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Leave Summary</Text>
-            <View style={styles.gridContainer}>
-              <TouchableOpacity 
-                style={[styles.summaryCard, styles.approvedCard]}
-                onPress={() => openDetailsModal(
-                  history.leaves.filter(l => l.leave_status === 'Approved'), 
-                  'leave'
-                )}
-              >
-                <Text style={[styles.summaryNumber, styles.approved]}>{leaveStats.approved}</Text>
-                <Text style={styles.summaryLabel}>Approved</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.summaryCard, styles.pendingCard]}
-                onPress={() => openDetailsModal(
-                  history.leaves.filter(l => l.leave_status === 'Pending'), 
-                  'leave'
-                )}
-              >
-                <Text style={[styles.summaryNumber, styles.pending]}>{leaveStats.pending}</Text>
-                <Text style={styles.summaryLabel}>Pending</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.summaryCard, styles.rejectedCard]}
-                onPress={() => openDetailsModal(
-                  history.leaves.filter(l => l.leave_status === 'Rejected'), 
-                  'leave'
-                )}
-              >
-                <Text style={[styles.summaryNumber, styles.rejected]}>{leaveStats.rejected}</Text>
-                <Text style={styles.summaryLabel}>Rejected</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.summaryCard}
-                onPress={() => openDetailsModal(history.leaves, 'leave')}
-              >
-                <Text style={styles.summaryNumber}>{leaveStats.total}</Text>
-                <Text style={styles.summaryLabel}>Total Leaves</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Salary Summary */}
-        {activeTab === 'salary' && (
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Salary Summary</Text>
-            <View style={styles.gridContainer}>
-              <TouchableOpacity 
-                style={[styles.summaryCard, styles.salaryHighlightCard]}
-                onPress={() => openDetailsModal(history.salary, 'salary')}
-              >
-                <Text style={styles.summaryCurrency}>₹</Text>
-                <Text style={styles.summaryBigNumber}>
-                  {salaryStats.average > 0 ? salaryStats.average.toLocaleString() : 'N/A'}
-                </Text>
-                <Text style={styles.summaryLabel}>Avg. Salary</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.summaryCard}
-                onPress={() => openDetailsModal(history.salary, 'salary')}
-              >
-                <Text style={styles.summaryCurrency}>₹</Text>
-                <Text style={styles.summaryBigNumber}>
-                  {salaryStats.highest > 0 ? salaryStats.highest.toLocaleString() : 'N/A'}
-                </Text>
-                <Text style={styles.summaryLabel}>Highest Salary</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.summaryCard}
-                onPress={() => openDetailsModal(history.salary, 'salary')}
-              >
-                <Text style={styles.summaryNumber}>{salaryStats.total}</Text>
-                <Text style={styles.summaryLabel}>Payments</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Details Modal */}
-      <Modal
-        animationType="slide"
-        transparent={false}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {activeTab === 'attendance' ? 'Attendance Details' : 
-               activeTab === 'leave' ? 'Leave Details' : 'Salary Details'}
-              {' - '}{months[selectedMonth]} {selectedYear}
-            </Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <AntDesign name="close" size={24} color="#6c757d" />
-            </TouchableOpacity>
-          </View>
-
-          {activeTab === 'attendance' && (
-            <FlatList
-              data={selectedData}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item }) => (
-                <View style={styles.detailCard}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Date:</Text>
-                    <Text style={styles.detailValue}>{item.date}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Status:</Text>
-                    <Text style={[
-                      styles.detailValue,
-                      item.status === 'Present' ? styles.present : styles.absent
-                    ]}>
-                      {item.status}
-                    </Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Check In:</Text>
-                    <Text style={styles.detailValue}>{item.check_in || '--:--'}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Check Out:</Text>
-                    <Text style={styles.detailValue}>{item.check_out || '--:--'}</Text>
-                  </View>
-                </View>
-              )}
-              ListEmptyComponent={
-                <View style={styles.emptyCard}>
-                  <Text style={styles.emptyText}>No records found for selected month</Text>
-                </View>
-              }
-            />
-          )}
-
-          {activeTab === 'leave' && (
-            <FlatList
-              data={selectedData}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item }) => (
-                <View style={styles.detailCard}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Type:</Text>
-                    <Text style={styles.detailValue}>{item.leave_type}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Dates:</Text>
-                    <Text style={styles.detailValue}>{item.from_date} to {item.to_date}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Status:</Text>
-                    <Text style={[
-                      styles.detailValue,
-                      item.leave_status === 'Approved' ? styles.approved :
-                      item.leave_status === 'Rejected' ? styles.rejected : styles.pending
-                    ]}>
-                      {item.leave_status}
-                    </Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Applied On:</Text>
-                    <Text style={styles.detailValue}>{item.created_at}</Text>
-                  </View>
-                </View>
-              )}
-              ListEmptyComponent={
-                <View style={styles.emptyCard}>
-                  <Text style={styles.emptyText}>No records found for selected month</Text>
-                </View>
-              }
-            />
-          )}
-
-          {activeTab === 'salary' && (
-            <FlatList
-              data={selectedData}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item }) => (
-                <View style={styles.detailCard}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Month:</Text>
-                    <Text style={styles.detailValue}>{item.PR_ST_Month_Year}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Basic:</Text>
-                    <Text style={styles.detailValue}>₹{item.PR_ST_Basic}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>HRA:</Text>
-                    <Text style={styles.detailValue}>₹{item.PR_ST_HRA}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Gross:</Text>
-                    <Text style={[styles.detailValue, styles.grossSalary]}>₹{item.PR_ST_Gross_Salary}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Net Salary:</Text>
-                    <Text style={[styles.detailValue, styles.netSalary]}>₹{item.PR_ST_Net_Salary}</Text>
-                  </View>
-                </View>
-              )}
-              ListEmptyComponent={
-                <View style={styles.emptyCard}>
-                  <Text style={styles.emptyText}>No records found for selected month</Text>
-                </View>
-              }
-            />
-          )}
         </View>
-      </Modal>
-    </View>
-  );
-};
+      )}
 
-const windowWidth = Dimensions.get('window').width;
-const cardWidth = (windowWidth - 60) / 2;
+      {activeTab === 'salary' && (
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Entypo name="wallet" size={24} color="#00B894" />
+            <Text style={styles.cardTitle}>Salary Insights</Text>
+          </View>
+          
+          <BarChart
+            data={{
+              labels: salaryData.map((_, i) => `Month ${i + 1}`),
+              datasets: [{
+                data: salaryStats.data
+              }]
+            }}
+            width={screenWidth - 40}
+            height={220}
+            chartConfig={chartConfig}
+            verticalLabelRotation={30}
+            fromZero
+            style={styles.chart}
+            withHorizontalLabels={true}
+            withVerticalLabels={true}
+            showBarTops={true}
+          />
+
+          <View style={styles.statsGrid}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>₹{salaryStats.average}</Text>
+              <Text style={styles.statLabel}>Average</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>₹{salaryStats.highest}</Text>
+              <Text style={styles.statLabel}>Highest</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{salaryStats.total}</Text>
+              <Text style={styles.statLabel}>Payments</Text>
+            </View>
+          </View>
+        </View>
+      )}
+    </ScrollView>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
+  contentContainer: {
+    padding: 20,
+    paddingBottom: 40
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  loadingText: {
-    marginTop: 15,
-    fontSize: 16,
-    color: '#6c757d',
-  },
-  noDataContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  noDataText: {
-    fontSize: 18,
-    color: '#6c757d',
-    textAlign: 'center',
-    paddingHorizontal: 30,
+    alignItems: 'center'
   },
   header: {
-    padding: 20,
-    paddingBottom: 10,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#343a40',
-    marginBottom: 5,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    marginLeft: 10
   },
-  headerSubtitle: {
+  subTitle: {
     fontSize: 16,
-    color: '#6c757d',
+    color: '#7f8c8d',
+    marginBottom: 20
   },
-  filterContainer: {
-    padding: 15,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  monthFilterButton: {
+  dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#f0f4ff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#6c5ce7',
+    marginVertical: 15,
+    justifyContent: 'space-between'
   },
-  monthFilterText: {
-    marginLeft: 10,
-    color: '#6c5ce7',
-    fontWeight: '500',
-    fontSize: 16,
-  },
-  dropdownIcon: {
-    marginLeft: 'auto',
-  },
-  pickerContainer: {
-    backgroundColor: '#ffffff',
+  dateButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 10,
     padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  pickerRow: {
+  dateButtonText: {
+    marginLeft: 10,
+    color: '#2d3436'
+  },
+  dateSeparator: {
+    marginHorizontal: 10,
+    color: '#7f8c8d',
+    fontWeight: 'bold'
+  },
+  tabRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 5,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    marginBottom: 20
   },
-  picker: {
-    width: '48%',
-    height: 50,
-  },
-  applyButton: {
-    backgroundColor: '#6c5ce7',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  applyButtonText: {
-    color: '#ffffff',
-    fontWeight: '600',
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  tabButton: {
+  tab: {
     flex: 1,
-    padding: 15,
     alignItems: 'center',
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
+    paddingVertical: 12,
+    borderRadius: 8
   },
   activeTab: {
-    borderBottomColor: '#6c5ce7',
+    backgroundColor: '#f1eaff'
+  },
+  pressedTab: {
+    opacity: 0.8
   },
   tabText: {
-    color: '#6c757d',
+    color: '#555',
     fontWeight: '500',
+    marginTop: 5,
+    fontSize: 12
   },
   activeTabText: {
     color: '#6c5ce7',
-    fontWeight: '600',
+    fontWeight: 'bold',
+    marginTop: 5,
+    fontSize: 12
   },
-  contentContainer: {
+  downloadButton: {
+    flexDirection: 'row',
+    backgroundColor: '#6c5ce7',
     padding: 15,
-    paddingBottom: 30,
-  },
-  sectionContainer: {
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3
   },
-  sectionTitle: {
+  pressedButton: {
+    opacity: 0.8
+  },
+  downloadButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    marginLeft: 10,
+    fontSize: 16
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15
+  },
+  cardTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#495057',
-    marginBottom: 15,
-    paddingLeft: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: '#6c5ce7',
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    marginLeft: 10
   },
-  gridContainer: {
+  chart: {
+    marginVertical: 10,
+    borderRadius: 10,
+    alignSelf: 'center',
+    overflow: 'hidden'
+  },
+  statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    marginTop: 15
   },
-  summaryCard: {
-    width: cardWidth,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  percentageCard: {
-    backgroundColor: '#f0f4ff',
-    borderWidth: 2,
-    borderColor: '#6c5ce7',
-    width: '100%',
-  },
-  approvedCard: {
-    backgroundColor: '#e6f7ee',
-    borderWidth: 1,
-    borderColor: '#28a745',
-  },
-  pendingCard: {
-    backgroundColor: '#fff8e6',
-    borderWidth: 1,
-    borderColor: '#ffc107',
-  },
-  rejectedCard: {
-    backgroundColor: '#fce8e8',
-    borderWidth: 1,
-    borderColor: '#dc3545',
-  },
-  salaryHighlightCard: {
-    backgroundColor: '#f0f4ff',
-    borderWidth: 2,
-    borderColor: '#6c5ce7',
-    width: '100%',
-  },
-  summaryNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#343a40',
-    marginBottom: 5,
-  },
-  present: {
-    color: '#28a745',
-  },
-  absent: {
-    color: '#dc3545',
-  },
-  approved: {
-    color: '#28a745',
-  },
-  pending: {
-    color: '#ffc107',
-  },
-  rejected: {
-    color: '#dc3545',
-  },
-  summaryPercentage: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#6c5ce7',
-    marginBottom: 5,
-  },
-  summaryBigNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#343a40',
-    marginBottom: 5,
-  },
-  summaryCurrency: {
-    fontSize: 18,
-    color: '#6c757d',
-    marginBottom: 5,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    color: '#6c757d',
-    textAlign: 'center',
-  },
-  viewDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  viewDetailsText: {
-    color: '#6c5ce7',
-    marginRight: 5,
-    fontWeight: '500',
-  },
-  emptyCard: {
-    backgroundColor: '#f1f3f5',
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 15,
-  },
-  emptyText: {
-    color: '#868e96',
-    fontStyle: 'italic',
-  },
-  // Modal Styles
-  modalContainer: {
-    flex: 1,
+  statItem: {
+    width: '48%',
     backgroundColor: '#f8f9fa',
+    borderRadius: 10,
     padding: 15,
+    marginBottom: 10,
+    alignItems: 'center'
   },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#343a40',
-  },
-  detailCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  detailLabel: {
-    color: '#6c757d',
-    fontWeight: '500',
-  },
-  detailValue: {
-    color: '#343a40',
-    fontWeight: '600',
-  },
-  grossSalary: {
-    color: '#28a745',
-  },
-  netSalary: {
+  statValue: {
+    fontSize: 22,
+    fontWeight: 'bold',
     color: '#6c5ce7',
-    fontWeight: '700',
+    marginBottom: 5
   },
+  statLabel: {
+    fontSize: 14,
+    color: '#7f8c8d'
+  }
 });
-
-export default AdminEmployeeHistoryScreen;

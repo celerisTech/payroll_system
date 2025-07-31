@@ -3,9 +3,11 @@ import { View, Text, Button, TextInput, ScrollView, StyleSheet, Modal, Touchable
 import axios from 'axios';
 import { Backend_Url } from './Backend_url';
 import { Calendar } from 'react-native-calendars';
-import { Picker } from '@react-native-picker/picker';
 import Toast from 'react-native-toast-message';
 import { BlurView } from 'expo-blur';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Platform } from 'react-native';
+
 
 export default function LeaveDashboard() {
   const [empId, setEmpId] = useState('');
@@ -21,22 +23,17 @@ export default function LeaveDashboard() {
   const [showFromCalendar, setShowFromCalendar] = useState(false);
   const [showToCalendar, setShowToCalendar] = useState(false);
 
-  const [fromHour, setFromHour] = useState('09');
-  const [fromMinute, setFromMinute] = useState('00');
-  const [fromAmPm, setFromAmPm] = useState('AM');
-
-  const [toHour, setToHour] = useState('09');
-  const [toMinute, setToMinute] = useState('00');
-  const [toAmPm, setToAmPm] = useState('AM');
-
-  const [showFromTimePicker, setShowFromTimePicker] = useState(false);
-  const [showToTimePicker, setShowToTimePicker] = useState(false);
-
-  const hours = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
-  const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
-
   const [leaveHistory, setLeaveHistory] = useState([]);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+
+  const [leaveReason, setLeaveReason] = useState('');
+
+  const [fromTime, setFromTime] = useState(new Date());
+  const [toTime, setToTime] = useState(new Date());
+  const [showFromTime, setShowFromTime] = useState(false);
+  const [showToTime, setShowToTime] = useState(false);
+
+
 
   function fetchLeaveData() {
     if (!empId) {
@@ -60,7 +57,7 @@ export default function LeaveDashboard() {
     if (ampm === 'AM' && hr === 12) hr = 0;
     return hr;
   }
-console.log('🟢 applyLeave() triggered');
+  console.log('🟢 applyLeave() triggered');
 
   function applyLeave() {
     if (!empId || !leaveType) {
@@ -69,23 +66,32 @@ console.log('🟢 applyLeave() triggered');
     }
 
     const fromDateTime = new Date(fromDate);
-    fromDateTime.setHours(convertTo24Hour(fromHour, fromAmPm), parseInt(fromMinute, 10));
+    fromDateTime.setHours(fromTime.getHours(), fromTime.getMinutes());
 
     const toDateTime = new Date(toDate);
-    toDateTime.setHours(convertTo24Hour(toHour, toAmPm), parseInt(toMinute, 10));
+    toDateTime.setHours(toTime.getHours(), toTime.getMinutes());
 
     if (toDateTime < fromDateTime) {
       Toast.show({ type: 'error', text1: 'Validation', text2: 'To Date/Time cannot be before From Date/Time' });
       return;
     }
 
+    const formatTime = (dateObj) => {
+      const hours = dateObj.getHours();
+      const minutes = dateObj.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const hour12 = hours % 12 || 12;
+      return `${hour12.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+    };
+
     axios.post(`${Backend_Url}/api/leaves/apply`, {
       PR_Emp_id: empId,
       leave_type: leaveType,
       from_date: fromDateTime.toISOString().split('T')[0],
-      from_time: fromHour + ':' + fromMinute + ' ' + fromAmPm,
+      from_time: formatTime(fromTime),
       to_date: toDateTime.toISOString().split('T')[0],
-      to_time: toHour + ':' + toMinute + ' ' + toAmPm
+      to_time: formatTime(toTime),
+      leave_reason: leaveReason
     })
       .then((res) => {
         console.log('✅ Response:', res.data);
@@ -95,7 +101,7 @@ console.log('🟢 applyLeave() triggered');
         fetchLeaveData();
       })
       .catch((err) => {
-        console.log('❌ Error:', err); // Add this
+        console.log('❌ Error:', err);
         setShowApplyModal(false);
         setShowLeaveModal(false);
         if (err.response?.data?.message) {
@@ -110,7 +116,7 @@ console.log('🟢 applyLeave() triggered');
     return date.toISOString().split('T')[0];
   }
 
-   const fetchLeaveHistory = () => {
+  const fetchLeaveHistory = () => {
     if (!empId) {
       Toast.show({ type: 'error', text1: 'Validation', text2: 'Please enter Employee ID' });
       return;
@@ -128,315 +134,335 @@ console.log('🟢 applyLeave() triggered');
   };
 
   return (
-  <ScrollView contentContainerStyle={styles.container}>
-    <Text style={styles.heading}>Leave Management</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.heading}>Leave Management</Text>
 
-    <Text style={styles.sectionTitle}>User ID</Text>
-    <TextInput
-      style={styles.input}
-      value={empId}
-      onChangeText={setEmpId}
-      placeholder="Enter User ID"
-      keyboardType="numeric"
-    />
+      <Text style={styles.sectionTitle}>User ID</Text>
+      <TextInput
+        style={styles.input}
+        value={empId}
+        onChangeText={setEmpId}
+        placeholder="Enter User ID"
+        keyboardType="numeric"
+      />
 
-    <TouchableOpacity style={styles.Button} onPress={fetchLeaveData}>
-      <Text style={styles.ButtonText}>Get Leave Balance</Text>
-    </TouchableOpacity>
+      <TouchableOpacity style={styles.Button} onPress={fetchLeaveData}>
+        <Text style={styles.ButtonText}>Get Leave Balance</Text>
+      </TouchableOpacity>
 
-    <Text style={styles.sectionTitle}>Leave Apply & View Leave History</Text>
+      <Text style={styles.sectionTitle}>Leave Apply & View Leave History</Text>
 
-    <TouchableOpacity style={styles.Button} onPress={() => setShowApplyModal(true)}>
-      <Text style={styles.ButtonText}>Apply for Leave</Text>
-    </TouchableOpacity>
+      <TouchableOpacity style={styles.Button} onPress={() => setShowApplyModal(true)}>
+        <Text style={styles.ButtonText}>Apply for Leave</Text>
+      </TouchableOpacity>
 
-    <TouchableOpacity style={styles.Button} onPress={fetchLeaveHistory}>
-      <Text style={styles.ButtonText}>Leave History</Text>
-    </TouchableOpacity>
+      <TouchableOpacity style={styles.Button} onPress={fetchLeaveHistory}>
+        <Text style={styles.ButtonText}>Leave History</Text>
+      </TouchableOpacity>
 
-    {/* Leave Balance Modal */}
-    <Modal visible={showLeaveModal} transparent animationType="slide">
-      <View style={styles.modalContainer}>
-        <BlurView intensity={50} tint="light" style={styles.modalBox}>
-          <Text style={styles.modalTitle}>Leave Details</Text>
-          {leaveData ? (
-            <>
-              <Text style={styles.inline}>User ID: {leaveData.PR_Emp_id}</Text>
-              <Text style={styles.inline}>Year: {leaveData.year}</Text>
-              <Text style={styles.subHeading}>Available Leave Balance</Text>
-              <Text style={styles.inline}>CL Remaining: {leaveData.pr_cl_balance}</Text>
-              <Text style={styles.inline}>PL Remaining: {leaveData.pr_pl_balance}</Text>
-              <Text style={styles.inline}>SL Remaining: {leaveData.pr_sl_balance}</Text>
-              <Text style={styles.subHeading}>Leaves Taken</Text>
-              <Text style={styles.inline}>CL Taken: {leaveData.cl_taken || 0}</Text>
-              <Text style={styles.inline}>PL Taken: {leaveData.pl_taken || 0}</Text>
-              <Text style={styles.inline}>SL Taken: {leaveData.sl_taken || 0}</Text>
-            </>
-          ) : (
-            <Text>No Leave Data Found</Text>
-          )}
-          <Button title="Close" onPress={() => setShowLeaveModal(false)} />
-        </BlurView>
-      </View>
-    </Modal>
 
-    {/* Leave History Modal */}
-    <Modal visible={showHistoryModal} transparent animationType="slide">
-      <ScrollView contentContainerStyle={styles.modalContainer}>
-        <BlurView intensity={50} tint="light" style={styles.modalBox}>
-          <Text style={styles.modalTitle}>Leave History</Text>
+      {/* Leave Balance Modal */}
+      <Modal visible={showLeaveModal} transparent animationType="slide">
+        <View style={styles.modalContainer}>
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 50 : 100}
+            tint="light"
+            style={styles.modalBox}
+          > 
+            <Text style={styles.modalTitle}>Leave Details</Text>
+            {leaveData ? (
+              <>
+                <Text style={styles.inline}>User ID: {leaveData.PR_Emp_id}</Text>
+                <Text style={styles.inline}>Year: {leaveData.year}</Text>
+                <Text style={styles.subHeading}>Available Leave Balance</Text>
+                <Text style={styles.inline}>CL Remaining: {leaveData.pr_cl_balance}</Text>
+                <Text style={styles.inline}>PL Remaining: {leaveData.pr_pl_balance}</Text>
+                <Text style={styles.inline}>SL Remaining: {leaveData.pr_sl_balance}</Text>
+                <Text style={styles.subHeading}>Leaves Taken </Text>
+                <Text style={styles.inline}>CL Taken: {leaveData.cl_taken || 0}</Text>
+                <Text style={styles.inline}>PL Taken: {leaveData.pl_taken || 0}</Text>
+                <Text style={styles.inline}>SL Taken: {leaveData.sl_taken || 0}</Text>
+              </>
+            ) : (
+              <Text>No Leave Data Found</Text>
+            )}
+            <Button title="Close" onPress={() => setShowLeaveModal(false)} />
+          </BlurView>
+        </View>
+      </Modal>
 
-          {leaveHistory.length === 0 ? (
-            <Text>No Leave History Found</Text>
-          ) : (
-            leaveHistory.map((item, index) => (
-              <View key={index} style={{ marginBottom: 10 }}>
-                <Text style={styles.inline}>Type: {item.leave_type}</Text>
-                <Text style={styles.inline}>
-                  From: {item.from_date} {item.from_time}
+      {/* Leave History Modal */}
+      <Modal visible={showHistoryModal} transparent animationType="slide">
+        <ScrollView contentContainerStyle={styles.modalContainer}>
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 50 : 100}
+            tint="light"
+            style={styles.modalBox}
+          >
+            <Text style={styles.modalTitle}>Leave History</Text>
+
+            {leaveHistory.length === 0 ? (
+              <Text>No Leave History Found</Text>
+            ) : (
+              leaveHistory.map((item, index) => (
+                <View key={index} style={{ marginBottom: 10 }}>
+                  <Text style={styles.inline}>Type: {item.leave_type}</Text>
+                  <Text style={styles.inline}>
+                    From: {item.from_date} {item.from_time}
+                  </Text>
+                  <Text style={styles.inline}>
+                    To: {item.to_date} {item.to_time}
+                  </Text>
+                  <Text style={styles.inline}>Status: {item.leave_status}</Text>
+                  <Text style={styles.inline}>
+                    Applied On: {new Date(item.created_at).toLocaleString()}
+                  </Text>
+                  <Text style={styles.inline}>Reason: {item.leave_reason || 'N/A'}</Text>
+                  <View
+                    style={{ height: 1, backgroundColor: '#ccc', marginVertical: 5 }}
+                  />
+                </View>
+              ))
+
+            )}
+
+            <Button title="Close" onPress={() => setShowHistoryModal(false)} />
+          </BlurView>
+        </ScrollView>
+      </Modal>
+
+      {/* Apply Modal */}
+      <Modal visible={showApplyModal} transparent animationType="slide">
+        <ScrollView contentContainerStyle={styles.modalContainer}>
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 50 : 100}
+            tint="light"
+            style={styles.modalBox}
+          >
+            <Text style={styles.modalTitle}>Apply Leave</Text>
+
+            {['CL', 'PL', 'SL'].map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.leaveTypeButton,
+                  leaveType === type && { backgroundColor: '#4e8ff7ff' },
+                ]}
+                onPress={() => setLeaveType(type)}
+              >
+                <Text style={{ color: leaveType === type ? 'white' : '#ccc' }}>
+                  {type}
                 </Text>
-                <Text style={styles.inline}>
-                  To: {item.to_date} {item.to_time}
-                </Text>
-                <Text style={styles.inline}>Status: {item.leave_status}</Text>
-                <Text style={styles.inline}>
-                  Applied On: {new Date(item.created_at).toLocaleString()}
-                </Text>
-                <View
-                  style={{ height: 1, backgroundColor: '#ccc', marginVertical: 5 }}
-                />
-              </View>
-            ))
-          )}
+              </TouchableOpacity>
+            ))}
 
-          <Button title="Close" onPress={() => setShowHistoryModal(false)} />
-        </BlurView>
-      </ScrollView>
-    </Modal>
-
-    {/* Apply Modal */}
-    <Modal visible={showApplyModal} transparent animationType="slide">
-      <ScrollView contentContainerStyle={styles.modalContainer}>
-        <BlurView intensity={50} tint="light" style={styles.modalBox}>
-          <Text style={styles.modalTitle}>Apply Leave</Text>
-
-          {['CL', 'PL', 'SL'].map((type) => (
+            {/* FROM DATE */}
+            <Text style={styles.label}>From Date</Text>
             <TouchableOpacity
-              key={type}
-              style={[
-                styles.leaveTypeButton,
-                leaveType === type && { backgroundColor: '#4e8ff7ff' },
-              ]}
-              onPress={() => setLeaveType(type)}
+              onPress={() => setShowFromCalendar(!showFromCalendar)}
+              style={styles.input}
             >
-              <Text style={{ color: leaveType === type ? 'white' : '#ccc' }}>
-                {type}
-              </Text>
+              <Text style={styles.inline}>{formatDate(fromDate)}</Text>
             </TouchableOpacity>
-          ))}
+            {showFromCalendar && (
+              <Calendar
+                onDayPress={(day) => {
+                  setFromDate(new Date(day.dateString));
+                  setShowFromCalendar(false);
+                }}
+                markedDates={{ [formatDate(fromDate)]: { selected: true } }}
+                minDate={formatDate(new Date())}
+                style={styles.calendar}
+              />
+            )}
 
-          {/* FROM DATE */}
-          <Text style={styles.label}>From Date</Text>
-          <TouchableOpacity
-            onPress={() => setShowFromCalendar(!showFromCalendar)}
-            style={styles.input}
-          >
-            <Text style={styles.inline}>{formatDate(fromDate)}</Text>
-          </TouchableOpacity>
-          {showFromCalendar && (
-            <Calendar
-              onDayPress={(day) => {
-                setFromDate(new Date(day.dateString));
-                setShowFromCalendar(false);
-              }}
-              markedDates={{ [formatDate(fromDate)]: { selected: true } }}
-              minDate={formatDate(new Date())}
-              style={styles.calendar}
+            {/* FROM TIME */}
+            <Text style={styles.label}>From Time</Text>
+            <TouchableOpacity onPress={() => setShowFromTime(true)} style={styles.input}>
+              <Text style={styles.inline}>{fromTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+            </TouchableOpacity>
+            {showFromTime && (
+              <DateTimePicker
+                value={fromTime}
+                mode="time"
+                display="default"
+                onChange={(event, selectedTime) => {
+                  setShowFromTime(false);
+                  if (selectedTime) setFromTime(selectedTime);
+                }}
+              />
+            )}
+
+
+            {/* TO DATE */}
+            <Text style={styles.label}>To Date</Text>
+            <TouchableOpacity
+              onPress={() => setShowToCalendar(!showToCalendar)}
+              style={styles.input}
+            >
+              <Text style={styles.inline}>{formatDate(toDate)}</Text>
+            </TouchableOpacity>
+            {showToCalendar && (
+              <Calendar
+                onDayPress={(day) => {
+                  setToDate(new Date(day.dateString));
+                  setShowToCalendar(false);
+                }}
+                markedDates={{ [formatDate(toDate)]: { selected: true } }}
+                minDate={formatDate(fromDate)}
+                style={styles.calendar}
+              />
+            )}
+
+            {/* TO TIME */}
+            <Text style={styles.label}>To Time</Text>
+            <TouchableOpacity onPress={() => setShowToTime(true)} style={styles.input}>
+              <Text style={styles.inline}>{toTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+            </TouchableOpacity>
+            {showToTime && (
+              <DateTimePicker
+                value={toTime}
+                mode="time"
+                display="default"
+                onChange={(event, selectedTime) => {
+                  setShowToTime(false);
+                  if (selectedTime) setToTime(selectedTime);
+                }}
+              />
+            )}
+
+
+            <Text style={styles.label}>Reason</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter reason for leave"
+              value={leaveReason}
+              onChangeText={setLeaveReason}
             />
-          )}
 
-          {/* FROM TIME */}
-          <Text style={styles.label}>From Time</Text>
-          <TouchableOpacity
-            onPress={() => setShowFromTimePicker(!showFromTimePicker)}
-            style={styles.input}
-          >
-            <Text style={styles.inline}>
-              {fromHour + ':' + fromMinute + ' ' + fromAmPm}
-            </Text>
-          </TouchableOpacity>
-          {showFromTimePicker && (
-            <View style={styles.pickerContainer}>
-              <Picker selectedValue={fromHour} style={styles.picker} onValueChange={setFromHour}>
-                {hours.map((h) => <Picker.Item key={h} label={h} value={h} />)}
-              </Picker>
-              <Picker selectedValue={fromMinute} style={styles.picker} onValueChange={setFromMinute}>
-                {minutes.map((m) => <Picker.Item key={m} label={m} value={m} />)}
-              </Picker>
-              <Picker selectedValue={fromAmPm} style={styles.picker} onValueChange={setFromAmPm}>
-                <Picker.Item label="AM" value="AM" />
-                <Picker.Item label="PM" value="PM" />
-              </Picker>
-              <Button title="Set Time" onPress={() => setShowFromTimePicker(false)} />
-            </View>
-          )}
+            <TouchableOpacity
+              style={[styles.Button, { backgroundColor: '#4e8ff7' }]}
+              onPress={applyLeave}
+            >
+              <Text style={styles.ButtonText}>Submit Leave</Text>
+            </TouchableOpacity>
 
-          {/* TO DATE */}
-          <Text style={styles.label}>To Date</Text>
-          <TouchableOpacity
-            onPress={() => setShowToCalendar(!showToCalendar)}
-            style={styles.input}
-          >
-            <Text style={styles.inline}>{formatDate(toDate)}</Text>
-          </TouchableOpacity>
-          {showToCalendar && (
-            <Calendar
-              onDayPress={(day) => {
-                setToDate(new Date(day.dateString));
-                setShowToCalendar(false);
-              }}
-              markedDates={{ [formatDate(toDate)]: { selected: true } }}
-              minDate={formatDate(fromDate)}
-              style={styles.calendar}
-            />
-          )}
-
-          {/* TO TIME */}
-          <Text style={styles.label}>To Time</Text>
-          <TouchableOpacity
-            onPress={() => setShowToTimePicker(!showToTimePicker)}
-            style={styles.input}
-          >
-            <Text style={styles.inline}>
-              {toHour + ':' + toMinute + ' ' + toAmPm}
-            </Text>
-          </TouchableOpacity>
-          {showToTimePicker && (
-            <View style={styles.pickerContainer}>
-              <Picker selectedValue={toHour} style={styles.picker} onValueChange={setToHour}>
-                {hours.map((h) => <Picker.Item key={h} label={h} value={h} />)}
-              </Picker>
-              <Picker selectedValue={toMinute} style={styles.picker} onValueChange={setToMinute}>
-                {minutes.map((m) => <Picker.Item key={m} label={m} value={m} />)}
-              </Picker>
-              <Picker selectedValue={toAmPm} style={styles.picker} onValueChange={setToAmPm}>
-                <Picker.Item label="AM" value="AM" />
-                <Picker.Item label="PM" value="PM" />
-              </Picker>
-              <Button title="Set Time" onPress={() => setShowToTimePicker(false)} />
-            </View>
-          )}
-
-          <Button title="Submit Leave" color=" #254979ff"  onPress={applyLeave} />
-          <Button title="Close" color="red" onPress={() => setShowApplyModal(false)} />
-        </BlurView>
-      </ScrollView>
-    </Modal>
-
-    <Toast />
-  </ScrollView>
-);
+            <TouchableOpacity
+              style={[styles.Button, { backgroundColor: 'red' }]}
+              onPress={() => setShowApplyModal(false)}
+            >
+              <Text style={styles.ButtonText}>Close</Text>
+            </TouchableOpacity>
+          </BlurView>
+        </ScrollView>
+      </Modal>
+      <Toast />
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#ffffffff',
-    justifyContent: 'center',
-    padding: 10,
+    backgroundColor: '#f9fbff',
+    padding: 20,
+    paddingBottom: 60,
   },
   heading: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#4e8ff7ff',
-    marginBottom: 20,
+    color: '#2b6cb0',
+    marginBottom: 25,
     textAlign: 'center',
   },
   sectionTitle: {
-    fontSize: 18,
-    color: '#000000ff',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#2d3748',
     marginTop: 30,
-    fontWeight: 'bold',
+    marginBottom: 10,
   },
   subHeading: {
-    fontWeight: 'bold',
-    color: '#000000ff',
-    marginTop: 15,
     fontSize: 16,
+    fontWeight: '600',
+    color: '#1a202c',
+    marginTop: 15,
   },
   label: {
-    color: '#ffffffff',
+    color: '#2d3748',
     marginTop: 15,
     fontWeight: 'bold',
     fontSize: 14,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#000000ff',
-    backgroundColor: 'rgba(69, 75, 77, 0.08)',
-    color: '#000000ff',
+    borderColor: '#cbd5e0',
+    backgroundColor: '#ffffff',
+    color: '#2d3748',
     padding: 12,
     marginTop: 8,
-    borderRadius: 12,
-    fontSize: 14,
+    borderRadius: 10,
+    fontSize: 15,
   },
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1e2020aa',
+    backgroundColor: '#1a202ccc',
     padding: 20,
   },
   modalBox: {
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 20,
-    width: '85%',
-    backgroundColor: 'transparent',
+    width: '90%',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
   modalTitle: {
+    fontSize: 22,
     fontWeight: 'bold',
-    fontSize: 20,
-    marginBottom: 15,
-    color: '#000000ff',
+    color: '#2b6cb0',
+    marginBottom: 20,
     textAlign: 'center',
   },
   inline: {
-    color: '#ffffffff',
+    color: '#2d3748',
+    fontSize: 14,
+    marginVertical: 2,
   },
   leaveTypeButton: {
     padding: 12,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#e2e8f0',
     marginVertical: 6,
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: 'center',
   },
   calendar: {
-    marginVertical: 8,
+    marginVertical: 10,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#f0f4f8',
   },
   pickerContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     marginVertical: 8,
   },
   picker: {
-    width: 80,
+    width: 100,
     height: 50,
-    color: '#ff0202ff',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    color: '#2d3748',
+    backgroundColor: '#edf2f7',
     borderRadius: 10,
   },
   Button: {
-    backgroundColor: '#4e8ff7ff',
-    padding: 12,
+    backgroundColor: '#2b6cb0',
+    padding: 14,
     borderRadius: 50,
     alignItems: 'center',
     marginVertical: 10,
   },
   ButtonText: {
-    color: '#fff',
+    color: '#ffffff',
     fontWeight: 'bold',
-    
+    fontSize: 15,
   },
 });

@@ -7,9 +7,11 @@ const db = require('./db'); // mysql2/promise pool
 router.get('/leave-requests', async (req, res) => {
   try {
     const [result] = await db.query(
-      `SELECT * FROM pr_leave_transactions WHERE leave_status = 'Pending'`
+      `SELECT transaction_id, PR_Emp_id, leave_type, from_date, from_time, to_date, to_time, leave_status, leave_reason
+        FROM pr_leave_transactions
+        WHERE leave_status = 'Pending'`
     );
-    console.log("📥 GET /api/manager/leave-requests");
+   // console.log("📥 GET /api/manager/leave-requests");
     res.json(result);
   } catch (err) {
     console.error('❌ Error fetching leaves:', err.message);
@@ -19,14 +21,13 @@ router.get('/leave-requests', async (req, res) => {
 
 // ✅ Approve or Reject Leave
 router.post('/leave-approve', async (req, res) => {
-  const { transaction_id, action } = req.body;
+  const { transaction_id, action, leave_type } = req.body;
 
-  if (!transaction_id || !['Approved', 'Rejected'].includes(action)) {
+  if (!transaction_id || !['Approved', 'Rejected'].includes(action) || !leave_type) {
     return res.status(400).json({ error: 'Invalid request' });
   }
 
   try {
-    // 🔹 1. Get the leave transaction details
     const [leaveRows] = await db.query(
       `SELECT * FROM pr_leave_transactions WHERE transaction_id = ?`,
       [transaction_id]
@@ -37,54 +38,49 @@ router.post('/leave-approve', async (req, res) => {
     }
 
     const leave = leaveRows[0];
-    const { PR_Emp_id, leave_type } = leave;
+    const PR_Emp_id = leave.PR_Emp_id;
+
+    // ✅ Use manager-selected updated leave_type
+    const updatedLeaveType = leave_type;
+
     const year = new Date().getFullYear();
 
-    // 🔹 2. Update the leave status (removed updated_at)
-    const [updateResult] = await db.query(
-      `UPDATE pr_leave_transactions SET leave_status = ? WHERE transaction_id = ?`,
-      [action, transaction_id]
-    );
+    // 🔄 Update leave type if changed
+    await db.query(`UPDATE pr_leave_transactions SET leave_type = ?, leave_status = ? WHERE transaction_id = ?`, [leave_type, action, transaction_id]);
 
-    if (updateResult.affectedRows === 0) {
-      return res.status(404).json({ message: 'Leave update failed' });
-    }
-
-    // 🔹 3. If Approved → Update balances
     if (action === 'Approved') {
       let balanceCol, takenCol;
 
-      if (leave_type === 'PL') {
+      if (updatedLeaveType === 'PL') {
         balanceCol = 'pr_pl_balance';
         takenCol = 'pl_taken';
-      } else if (leave_type === 'CL') {
+      } else if (updatedLeaveType === 'CL') {
         balanceCol = 'pr_cl_balance';
         takenCol = 'cl_taken';
-      } else if (leave_type === 'SL') {
+      } else if (updatedLeaveType === 'SL') {
         balanceCol = 'pr_sl_balance';
         takenCol = 'sl_taken';
       } else {
         return res.status(400).json({ error: 'Invalid leave type' });
       }
 
-      // 🔹 4. Decrement balance and increment taken
       await db.query(
         `UPDATE pr_leave_master
-         SET ${balanceCol} = ${balanceCol} - 1,
-             ${takenCol} = ${takenCol} + 1
-         WHERE PR_Emp_id = ? AND year = ?`,
+     SET ${balanceCol} = ${balanceCol} - 1,
+         ${takenCol} = ${takenCol} + 1
+     WHERE PR_Emp_id = ? AND year = ?`,
         [PR_Emp_id, year]
       );
     }
 
-    console.log(`✅ Leave ${action.toLowerCase()} for transaction ID ${transaction_id}`);
     res.json({ message: `Leave ${action.toLowerCase()} successfully` });
 
   } catch (err) {
-    console.error('❌ Error approving leave:', err.message);
+    console.error('❌ Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
+
 // ✅ Get Leave History for a Specific User
 router.get('/leave-history/:PR_Emp_id', async (req, res) => {
   const { PR_Emp_id } = req.params;
@@ -92,9 +88,9 @@ router.get('/leave-history/:PR_Emp_id', async (req, res) => {
   try {
     const [history] = await db.query(
       `SELECT transaction_id, leave_type, from_date, from_time, to_date, to_time, leave_status
-       FROM pr_leave_transactions
-       WHERE PR_Emp_id = ?
-       ORDER BY from_date DESC`,
+        FROM pr_leave_transactions
+        WHERE PR_Emp_id = ?
+        ORDER BY from_date DESC`,
       [PR_Emp_id]
     );
 

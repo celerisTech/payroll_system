@@ -9,7 +9,7 @@ router.get('/:PR_Emp_id', async (req, res) => {
 
   try {
     // 1. Check if employee exists
-    const [empRows] = await db.query(`SELECT * FROM PR_Employees_Master WHERE PR_Emp_id = ?`, [PR_Emp_id]);
+    const [empRows] = await db.query(`SELECT * FROM pr_employees_master WHERE PR_Emp_id = ?`, [PR_Emp_id]);
     if (empRows.length === 0) {
       return res.status(404).json({ message: 'Employee not found' });
     }
@@ -41,16 +41,16 @@ router.get('/:PR_Emp_id', async (req, res) => {
 
 module.exports = router;
 
-// 🔹 Apply for Leave (Only if no pending)
-// 🔹 Apply for Leave (Only if no pending or overlapping approved leaves)
+
 router.post('/apply', async (req, res) => {
+
   console.log("📥 POST /apply hit");
   console.log("📥 Request body:", req.body);
 
   try {
-    const { PR_Emp_id, leave_type, from_date, from_time, to_date, to_time } = req.body;
+    const { PR_Emp_id, leave_type, from_date, from_time, to_date, to_time, leave_reason } = req.body;
 
-    if (!PR_Emp_id || !leave_type || !from_date || !to_date || !from_time || !to_time) {
+    if (!PR_Emp_id || !leave_type || !from_date || !to_date || !from_time || !to_time || !leave_reason) {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
@@ -84,14 +84,15 @@ router.post('/apply', async (req, res) => {
     const leave_date = from_date;
 
     const insertQuery = `
-      INSERT INTO pr_leave_transactions 
-      (PR_Emp_id, leave_type, from_date, from_time, to_date, to_time, leave_date, leave_status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending', NOW())
-    `;
+  INSERT INTO pr_leave_transactions 
+  (PR_Emp_id, leave_type, from_date, from_time, to_date, to_time, leave_date, leave_reason, leave_status, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NOW())
+`;
 
     const [result] = await db.query(insertQuery, [
-      PR_Emp_id, leave_type, from_date, from_time, to_date, to_time, leave_date
+      PR_Emp_id, leave_type, from_date, from_time, to_date, to_time, leave_date, leave_reason
     ]);
+
 
     console.log("✅ Leave applied successfully:", result);
     return res.json({ message: 'Leave applied successfully and is pending approval' });
@@ -105,9 +106,9 @@ router.post('/apply', async (req, res) => {
 module.exports = router;
 
 // 🔹 Reset Leave Balances (Manager Use)
-router.post('/reset',async (req, res) => {
+router.post('/reset', async (req, res) => {
   const { PR_Emp_id, year } = req.body;
-  if (!PR_Emp_id || !year) return res.status(400).json({ error: 'user_id and year are required' });
+  if (!PR_Emp_id || !year) return res.status(400).json({ error: 'PR_Emp_id and year are required' });
 
   db.query(`UPDATE pr_leave_master 
             SET pr_cl_balance = 8, pr_pl_balance = 24, pr_sl_balance = 5,
@@ -124,10 +125,10 @@ router.post('/reset',async (req, res) => {
 });
 
 // 🔹 Manual Init Leave Balance (Optional)
-router.post('/init', async(req, res) => {
+router.post('/init', async (req, res) => {
   const { PR_Emp_id } = req.body;
   const year = new Date().getFullYear();
-  if (!PR_Emp_id) return res.status(400).json({ error: 'user_id is required' });
+  if (!PR_Emp_id) return res.status(400).json({ error: 'PR_Emp_id is required' });
 
   db.query(`SELECT * FROM pr_leave_master WHERE PR_Emp_id = ? AND year = ?`, [PR_Emp_id, year], (err, leaveResult) => {
     if (err) return res.status(500).json({ error: err.message });

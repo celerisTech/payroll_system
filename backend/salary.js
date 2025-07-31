@@ -20,22 +20,18 @@ router.post('/generate', async (req, res) => {
         S.PR_SS_HRA,
         S.PR_SS_Other_Allow
       FROM PR_Employees_Master E
-JOIN PR_Salary_Structures S ON E.PR_Emp_id = S.PR_SS_Employee_ID
-WHERE E.PR_EMP_Is_Active = 1
-
+      JOIN PR_Salary_Structures S ON E.PR_Emp_id = S.PR_SS_Employee_ID
+      WHERE E.PR_EMP_Is_Active = 1
     `);
 
     console.log("📥 Generating salary for month:", monthYear);
     console.log("👥 Total employees fetched:", employees.length);
-    console.log("👀 Employees list:", employees);
 
     if (employees.length === 0) {
       return res.status(404).json({ message: "No active employees with salary structure found." });
     }
 
     for (const emp of employees) {
-      console.log("➡️ Processing employee:", emp.PR_Emp_ID);
-
       const [existing] = await db.query(`
         SELECT * FROM PR_Salary_Transactions 
         WHERE PR_ST_Employee_ID = ? AND PR_ST_Month_Year = ?
@@ -53,8 +49,6 @@ WHERE E.PR_EMP_Is_Active = 1
       const deductions = 0;
       const net = gross - deductions;
 
-      console.log(`💾 Inserting salary for Employee ${emp.PR_Emp_ID} - Gross: ${gross}`);
-
       await db.query(`
         INSERT INTO PR_Salary_Transactions 
         (PR_ST_Employee_ID, PR_ST_Month_Year, PR_ST_Basic, PR_ST_HRA, PR_ST_Other_Allow, 
@@ -70,7 +64,6 @@ WHERE E.PR_EMP_Is_Active = 1
     res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 });
-
 
 // ✅ 2. Define or update salary structure
 router.post('/structure', async (req, res) => {
@@ -113,7 +106,6 @@ router.post('/structure', async (req, res) => {
 // ✅ 3. Get salary history for an employee
 router.get('/history/:PR_Emp_id', async (req, res) => {
   const { PR_Emp_id } = req.params;
-  console.log("📥 /history route hit with PR_Emp_id:", PR_Emp_id);
 
   try {
     const [history] = await db.query(`
@@ -161,6 +153,29 @@ router.get('/structure-employees', async (req, res) => {
     res.status(200).json({ data: rows });
   } catch (err) {
     console.error("❌ Error fetching employees with salary structure:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+// ✅ 6. Get total payroll for the current month (used in AdminDashboard.js)
+router.get('/dashboard/monthly-payroll', async (req, res) => {
+  try {
+    const current = new Date();
+    const month = (current.getMonth() + 1).toString().padStart(2, '0');
+    const year = current.getFullYear();
+    const monthYear = `${month}-${year}`; // Format: "07-2025"
+
+    const [result] = await db.query(`
+      SELECT SUM(PR_ST_Net_Salary) AS total 
+      FROM PR_Salary_Transactions 
+      WHERE PR_ST_Month_Year = ?
+    `, [monthYear]);
+
+    const total = result[0].total || 0;
+    res.status(200).json({ total });
+
+  } catch (err) {
+    console.error("❌ Error in /dashboard/monthly-payroll:", err);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
