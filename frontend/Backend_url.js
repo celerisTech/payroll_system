@@ -1,1 +1,1 @@
-    export const Backend_Url = "http://192.168.1.47:5000";
+    export const Backend_Url = "http://192.168.1.46:5000";

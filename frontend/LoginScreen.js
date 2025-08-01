@@ -44,7 +44,7 @@ export default function LoginScreen({ navigation, onLogin }) {
     const data = await response.json();
 
     if (response.ok) {
-      onLogin(data.role, data.id);
+      onLogin(data.role, data.userId);
       setMessage(`✅ Welcome ${data.role}`);
       if (Platform.OS !== 'web') Alert.alert('Login Success', `✅ Welcome ${data.role}`);
     } else {

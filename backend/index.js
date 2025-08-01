@@ -26,6 +26,7 @@ const leaveManagementRoutes = require('./leave_management');
 const leaveApprovalRoutes = require('./manager_approval');
 const signUpRoutes = require("./sign_up");
 
+
 // ✅ Mount APIs
 app.use('/api/employees', employees);
 app.use('/api/users', users);
@@ -44,6 +45,9 @@ app.use('/api/salary', salaryRoutes);                // ✅ NEW: Salary routes
 app.use('/api/leaves', leaveManagementRoutes);  // /api/leaves/:user_id  /api/leaves/apply
 app.use('/api/manager', leaveApprovalRoutes);   // /api/manager/pending  /api/manager/approve
 app.use("/api/signup", signUpRoutes);
+
+
+
 // ✅ Health check
 app.get('/', (req, res) => {
   res.json({ message: "Welcome to Payroll API" });

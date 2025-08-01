@@ -65,16 +65,6 @@ router.post('/', async (req, res) => {
     // Create user if not exists
     const [userRows] = await db.query('SELECT * FROM users WHERE id = ?', [PR_Emp_id]);
 
-    if (userRows.length === 0) {
-      const defaultUsername = `user_${PR_Emp_id}`;
-      const defaultPassword = 'default123';
-      const defaultRole = 'Employee';
-
-      await db.query(
-        'INSERT INTO users (id, username, password, role) VALUES (?, ?, ?, ?)',
-        [PR_Emp_id, defaultUsername, defaultPassword, defaultRole]
-      );
-    }
 
     const sql = `
       INSERT INTO PR_Employees_Master (
@@ -176,4 +166,4 @@ router.get('/history/:PR_Emp_id', async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = router;  

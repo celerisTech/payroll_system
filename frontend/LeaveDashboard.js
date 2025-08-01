@@ -1,41 +1,37 @@
 import React, { useState } from 'react';
-import { View, Text, Button, TextInput, ScrollView, StyleSheet, Modal, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Button, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
+import Calendar from 'react-native-calendars/src/calendar';
+import { DateTimePicker } from '@react-native-community/datetimepicker';
+import Toast from 'react-native-toast-message';
 import axios from 'axios';
 import { Backend_Url } from './Backend_url';
-import { Calendar } from 'react-native-calendars';
-import Toast from 'react-native-toast-message';
-import { BlurView } from 'expo-blur';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Platform } from 'react-native';
+// Add this import at the top of your file
+import { StyleSheet } from 'react-native';
 
-
-export default function LeaveDashboard() {
+const LeaveDashboard = ({ onClose }) => {
   const [empId, setEmpId] = useState('');
   const [leaveData, setLeaveData] = useState(null);
-
+  const [leaveHistory, setLeaveHistory] = useState([]);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showApplyModal, setShowApplyModal] = useState(false);
-
-  const [leaveType, setLeaveType] = useState('');
+  const [leaveType, setLeaveType] = useState('CL');
   const [fromDate, setFromDate] = useState(new Date());
   const [toDate, setToDate] = useState(new Date());
-
-  const [showFromCalendar, setShowFromCalendar] = useState(false);
-  const [showToCalendar, setShowToCalendar] = useState(false);
-
-  const [leaveHistory, setLeaveHistory] = useState([]);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-
-  const [leaveReason, setLeaveReason] = useState('');
-
   const [fromTime, setFromTime] = useState(new Date());
   const [toTime, setToTime] = useState(new Date());
+  const [showFromCalendar, setShowFromCalendar] = useState(false);
+  const [showToCalendar, setShowToCalendar] = useState(false);
   const [showFromTime, setShowFromTime] = useState(false);
   const [showToTime, setShowToTime] = useState(false);
+  const [leaveReason, setLeaveReason] = useState('');
 
+  const formatDate = (date) => {
+    return date.toISOString().split('T')[0];
+  };
 
-
-  function fetchLeaveData() {
+  const fetchLeaveData = () => {
     if (!empId) {
       Toast.show({ type: 'error', text1: 'Validation', text2: 'Please enter Employee ID' });
       return;
@@ -49,17 +45,9 @@ export default function LeaveDashboard() {
       .catch(() => {
         Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch leave data' });
       });
-  }
+  };
 
-  function convertTo24Hour(hour, ampm) {
-    let hr = parseInt(hour, 10);
-    if (ampm === 'PM' && hr !== 12) hr += 12;
-    if (ampm === 'AM' && hr === 12) hr = 0;
-    return hr;
-  }
-  console.log('🟢 applyLeave() triggered');
-
-  function applyLeave() {
+  const applyLeave = () => {
     if (!empId || !leaveType) {
       Toast.show({ type: 'error', text1: 'Validation', text2: 'Please fill all fields' });
       return;
@@ -94,14 +82,12 @@ export default function LeaveDashboard() {
       leave_reason: leaveReason
     })
       .then((res) => {
-        console.log('✅ Response:', res.data);
         setShowApplyModal(false);
         setShowLeaveModal(false);
         Toast.show({ type: 'success', text1: 'Success', text2: res.data.message });
         fetchLeaveData();
       })
       .catch((err) => {
-        console.log('❌ Error:', err);
         setShowApplyModal(false);
         setShowLeaveModal(false);
         if (err.response?.data?.message) {
@@ -110,11 +96,7 @@ export default function LeaveDashboard() {
           Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to apply leave' });
         }
       });
-  }
-
-  function formatDate(date) {
-    return date.toISOString().split('T')[0];
-  }
+  };
 
   const fetchLeaveHistory = () => {
     if (!empId) {
@@ -135,6 +117,11 @@ export default function LeaveDashboard() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {/* Back Button */}
+      <TouchableOpacity style={styles.backButton} onPress={onClose}>
+        <Text style={styles.backButtonText}>← Back to Dashboard</Text>
+      </TouchableOpacity>
+
       <Text style={styles.heading}>Leave Management</Text>
 
       <Text style={styles.sectionTitle}>User ID</Text>
@@ -159,7 +146,6 @@ export default function LeaveDashboard() {
       <TouchableOpacity style={styles.Button} onPress={fetchLeaveHistory}>
         <Text style={styles.ButtonText}>Leave History</Text>
       </TouchableOpacity>
-
 
       {/* Leave Balance Modal */}
       <Modal visible={showLeaveModal} transparent animationType="slide">
@@ -223,7 +209,6 @@ export default function LeaveDashboard() {
                   />
                 </View>
               ))
-
             )}
 
             <Button title="Close" onPress={() => setShowHistoryModal(false)} />
@@ -293,7 +278,6 @@ export default function LeaveDashboard() {
               />
             )}
 
-
             {/* TO DATE */}
             <Text style={styles.label}>To Date</Text>
             <TouchableOpacity
@@ -331,7 +315,6 @@ export default function LeaveDashboard() {
               />
             )}
 
-
             <Text style={styles.label}>Reason</Text>
             <TextInput
               style={styles.input}
@@ -359,7 +342,7 @@ export default function LeaveDashboard() {
       <Toast />
     </ScrollView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -367,6 +350,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fbff',
     padding: 20,
     paddingBottom: 60,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    marginBottom: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    backgroundColor: '#e2e8f0',
+  },
+  backButtonText: {
+    color: '#2b6cb0',
+    fontWeight: '600',
+    fontSize: 16,
   },
   heading: {
     fontSize: 28,
@@ -441,18 +437,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#f0f4f8',
   },
-  pickerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 8,
-  },
-  picker: {
-    width: 100,
-    height: 50,
-    color: '#2d3748',
-    backgroundColor: '#edf2f7',
-    borderRadius: 10,
-  },
   Button: {
     backgroundColor: '#2b6cb0',
     padding: 14,
@@ -466,3 +450,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 });
+
+export default LeaveDashboard;
