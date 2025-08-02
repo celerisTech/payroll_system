@@ -66,9 +66,10 @@ router.delete('/:id', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   const { identifier, password } = req.body;
+  console.log("🔐 Login attempt:", req.body);
 
   try {
-    // 1️⃣ Try Admin / Payroll Officer from `users` table
+    // 1️⃣ Admin / Payroll Officer login via 'users' table
     const [userMatch] = await db.query(
       'SELECT id, username, role, password FROM users WHERE username = ?',
       [identifier]
@@ -83,7 +84,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // 2️⃣ Try Employee from `pr_employees_master` table
+    // 2️⃣ Employee login via 'pr_employees_master' table
     const [empMatch] = await db.query(
       'SELECT id, PR_Emp_id, PR_EMP_Password FROM pr_employees_master WHERE PR_Emp_id = ?',
       [identifier]
@@ -95,17 +96,17 @@ router.post('/login', async (req, res) => {
     ) {
       return res.json({
         success: true,
-        userId: empMatch[0].PR_Emp_id, // Pass PR_Emp_id as identifier
+        userId: empMatch[0].PR_Emp_id,
         role: 'Employee',
         source: 'pr_employees_master',
       });
     }
 
-    // 3️⃣ No match
-    return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    // 3️⃣ Invalid Credentials
+    res.status(401).json({ success: false, error: 'Invalid credentials' });
 
   } catch (err) {
-    console.error('Login error:', err);
+    console.error("❌ Login error:", err);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });

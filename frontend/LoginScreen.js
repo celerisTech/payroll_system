@@ -11,28 +11,7 @@ export default function LoginScreen({ navigation, onLogin }) {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
-  // const handleLogin = async () => {
-  //   try {
-  //     const response = await fetch(`${Backend_Url}/api/users`);
-  //     const users = await response.json();
 
-  //     const matchedUser = users.find(
-  //       (user) => user.username === username && user.password === password
-  //     );
-
-  //     if (matchedUser) {
-  //       onLogin(matchedUser.role, matchedUser.id);
-  //       setMessage(`✅ Welcome ${matchedUser.role}`);
-  //       if (Platform.OS !== 'web') Alert.alert('Login Success', `✅ Welcome ${matchedUser.role}`);
-  //     } else {
-  //       setMessage('❌ Invalid credentials');
-  //       if (Platform.OS !== 'web') Alert.alert('Login Failed', '❌ Invalid credentials');
-  //     }
-  //   } catch {
-  //     setMessage('🔥 Error connecting to server');
-  //     if (Platform.OS !== 'web') Alert.alert('Server Error', '🔥 Error connecting to server');
-  //   }
-  // };
   const handleLogin = async () => {
   try {
     const response = await fetch(`${Backend_Url}/api/users/login`, {
@@ -47,6 +26,7 @@ export default function LoginScreen({ navigation, onLogin }) {
       onLogin(data.role, data.userId);
       setMessage(`✅ Welcome ${data.role}`);
       if (Platform.OS !== 'web') Alert.alert('Login Success', `✅ Welcome ${data.role}`);
+      
     } else {
       setMessage('❌ Invalid credentials');
       if (Platform.OS !== 'web') Alert.alert('Login Failed', '❌ Invalid credentials');
@@ -89,9 +69,13 @@ export default function LoginScreen({ navigation, onLogin }) {
 >
   <Text style={styles.buttonText}>Sign Up</Text>
 </TouchableOpacity>
+<TouchableOpacity
+  style={[styles.button, { backgroundColor: '#254979' }]}
+  onPress={() => navigation.navigate('ForgotPassword')}
+>
+  <Text style={styles.buttonText}>Forgot Password</Text>
+</TouchableOpacity>
       </View>
-    
-
     </View>
   );
 }

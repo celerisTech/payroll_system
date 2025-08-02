@@ -7,7 +7,7 @@ import Toast from 'react-native-toast-message';
 import { Backend_Url } from './Backend_url';
 
 
-export default function SignUp({ navigation }) {
+export default function ForgotPassword({ navigation }) {
   const [step, setStep] = useState(1);
   const [PR_phoneNumber, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -16,50 +16,35 @@ export default function SignUp({ navigation }) {
   const [userId, setUserId] = useState('');
 
   // 🔹 Send OTP
-// 🔹 Send OTP
-const handleSendOtp = async () => {
-  if (!userId.trim() || !PR_phoneNumber || PR_phoneNumber.length < 10) {
-    return Toast.show({
-      type: 'error',
-      text1: 'Missing Info',
-      text2: '📱 Enter both User ID and valid 10-digit phone number',
-    });
-  }
+  const handleSendOtp = async () => {
+    if (!userId.trim() || !PR_phoneNumber || PR_phoneNumber.length < 10) {
+      return Toast.show({
+        type: 'error',
+        text1: 'Missing Info',
+        text2: '📱 Enter both User ID and valid 10-digit phone number',
+      });
+    }
 
-  try {
-    await axios.post(`${Backend_Url}/api/signup/send-otp`, {
-      PR_phoneNumber,
-      PR_Emp_id: userId
-    });
-
-    Toast.show({
-      type: 'success',
-      text1: 'OTP Sent ✅',
-      text2: 'Check your phone (mock)',
-    });
-    setStep(2);
-  } catch (err) {
-    if (err.response && err.response.status === 409) {
-      Toast.show({
-        type: 'info',
-        text1: 'Already Registered',
-        text2: 'Redirecting to Forgot Password...',
+    try {
+      await axios.post(`${Backend_Url}/api/forgot/send-otp`, {
+        PR_phoneNumber,
+        PR_Emp_id: userId
       });
 
-      // Redirect to ForgotPassword screen after 1 second
-      setTimeout(() => {
-        navigation.navigate('ForgotPassword'); 
-      }, 1000);
-    } else {
+      Toast.show({
+        type: 'success',
+        text1: 'OTP Sent ✅',
+        text2: 'Check your phone (mock)',
+      });
+      setStep(2);
+    } catch (err) {
       Toast.show({
         type: 'error',
         text1: 'User Not Found ❌',
         text2: 'No match for this User ID and Phone number',
       });
     }
-  }
-};
-
+  };
 
   // 🔹 Verify OTP
   const handleVerifyOtp = async () => {
@@ -72,7 +57,7 @@ const handleSendOtp = async () => {
     }
 
     try {
-      const res = await axios.post(`${Backend_Url}/api/signup/verify-otp`, { otp });
+      const res = await axios.post(`${Backend_Url}/api/forgot/verify-otp`, { otp });
       if (res.data.message === "OTP verified") {
         Toast.show({
           type: 'success',
@@ -105,7 +90,7 @@ const handleSendOtp = async () => {
         text2: 'Please fill both password fields',
       });
     }
-  
+
     if (PR_EMP_Password.length < 6) {
       return Toast.show({
         type: 'error',
@@ -113,7 +98,7 @@ const handleSendOtp = async () => {
         text2: 'Password should be at least 6 characters',
       });
     }
-  
+
     if (PR_EMP_Password !== confirm) {
       return Toast.show({
         type: 'error',
@@ -121,19 +106,18 @@ const handleSendOtp = async () => {
         text2: 'Passwords do not match',
       });
     }
-  
+
     try {
-      await axios.post(`${Backend_Url}/api/signup/set-password`, {
-        PR_phoneNumber,
-        PR_EMP_Password,
-      });
-  
+     await axios.post(`${Backend_Url}/api/forgot/reset-password`, { PR_phoneNumber, PR_EMP_Password });
+
+
       Toast.show({
         type: 'success',
         text1: '🎉 Success',
         text2: 'Password set successfully!',
       });
-  
+
+      // Optional navigation or form reset
       setTimeout(() => {
         setPhone('');
         setOtp('');
@@ -141,8 +125,10 @@ const handleSendOtp = async () => {
         setConfirm('');
         setUserId('');
         setStep(1);
-  
-        navigation.navigate('LoginScreen');
+
+        if (navigation) {
+          navigation.navigate('LoginScreen'); // Uncomment if using navigation
+        }
       }, 1000);
     } catch {
       Toast.show({
@@ -152,11 +138,10 @@ const handleSendOtp = async () => {
       });
     }
   };
-  
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🧑‍💼 Employee Sign Up</Text>
+      <Text style={styles.title}>Forgot Password</Text>
 
       {step === 1 && (
         <>

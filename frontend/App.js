@@ -8,6 +8,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SignupScreen from './sign_up'; // adjust path
 import EmployeeDashboard from './EmployeeDashboard';
+import ForgotPasswordScreen from './forgot_password'; // ✅ Make sure path is correct
 
 
 export default function App() {
@@ -39,10 +40,18 @@ export default function App() {
       {!role ? (
         <NavigationContainer>
           <Stack.Navigator initialRouteName="Login">
+            {/* ✅ Login screen (only define once) */}
             <Stack.Screen name="Login">
               {(props) => <LoginScreen {...props} onLogin={handleLogin} />}
             </Stack.Screen>
+
+            {/* ✅ Signup screen */}
             <Stack.Screen name="Signup" component={SignupScreen} />
+            <Stack.Screen name="LoginScreen" component={LoginScreen} />
+
+
+            {/* ✅ ForgotPassword screen */}
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       ) : (

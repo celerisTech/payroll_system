@@ -1,16 +1,15 @@
-// backend/sign_up.js
 const express = require("express");
 const router = express.Router();
 const db = require("./db");
 const bcrypt = require("bcrypt");
 
-// 🔹 Send OTP
-// 🔹 Send OTP (modified)
+// 🔹 Send OTP for Forgot Password
 router.post("/send-otp", async (req, res) => {
   const { PR_phoneNumber, PR_Emp_id } = req.body;
 
-  if (!PR_phoneNumber || !PR_Emp_id)
-    return res.status(400).json({ message: "phone and User ID required" });
+  if (!PR_phoneNumber || !PR_Emp_id) {
+    return res.status(400).json({ message: "Phone and User ID required" });
+  }
 
   try {
     const [rows] = await db.query(
@@ -19,17 +18,11 @@ router.post("/send-otp", async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: "Phone/User ID mismatch or not found" });
-    }
-
-    const user = rows[0];
-
-    if (user.PR_EMP_Password) {
-      return res.status(409).json({ message: "Account already registered" });
+      return res.status(404).json({ message: "No matching user found" });
     }
 
     // Simulate sending OTP
-    console.log(`📨 OTP sent to ${PR_phoneNumber} for PR_Emp_id ${PR_Emp_id}`);
+    console.log(`📨 [FORGOT] OTP sent to ${PR_phoneNumber}`);
 
     return res.json({ message: "OTP sent" });
   } catch (err) {
@@ -38,26 +31,32 @@ router.post("/send-otp", async (req, res) => {
   }
 });
 
-
 // 🔹 Verify OTP
 router.post("/verify-otp", async (req, res) => {
-  // Placeholder
+  // Replace this with actual OTP validation logic
   return res.json({ message: "OTP verified" });
 });
 
-// 🔹 Set password
-router.post("/set-password", async (req, res) => {
+// 🔹 Reset Password (UPDATE only)
+router.post("/reset-password", async (req, res) => {
   const { PR_phoneNumber, PR_EMP_Password } = req.body;
 
-  if (!PR_phoneNumber || !PR_EMP_Password) return res.status(400).json({ message: "Missing data" });
+  if (!PR_phoneNumber || !PR_EMP_Password) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
 
   try {
     const hashedPassword = await bcrypt.hash(PR_EMP_Password, 10);
-    await db.query("UPDATE pr_employees_master SET PR_EMP_Password = ? WHERE PR_phoneNumber = ?", [hashedPassword, PR_phoneNumber]);
-    return res.json({ message: "Password updated" });
+
+    await db.query(
+      "UPDATE pr_employees_master SET PR_EMP_Password = ? WHERE PR_phoneNumber = ?",
+      [hashedPassword, PR_phoneNumber]
+    );
+
+    return res.json({ message: "Password reset successful" });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: "Error updating password" });
+    return res.status(500).json({ message: "Error resetting password" });
   }
 });
 
